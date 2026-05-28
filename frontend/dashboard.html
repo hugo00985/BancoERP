@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Dashboard - Banco Industrial</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background-color: #f5f7fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow-x: hidden;
+        }
+
+        .container-fluid > .row {
+            --bs-gutter-x: 0;
+        }
+        
+        /* Sidebar */
+        .sidebar {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1a472a 0%, #0d2818 100%);
+            transition: all 0.3s ease;
+        }
+        
+        .sidebar .nav-link {
+            color: rgba(255,255,255,0.85) !important;
+            padding: 12px 20px;
+            transition: all 0.3s;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .sidebar .nav-link:hover {
+            background: rgba(255,255,255,0.1);
+            transform: translateX(5px);
+            color: #ffffff !important;
+        }
+        
+        .sidebar .nav-link.active {
+            background: rgba(255,255,255,0.15);
+            border-left: 4px solid #ffd700;
+            color: #ffd700 !important;
+        }
+        
+        .sidebar .nav-link i {
+            margin-right: 10px;
+            width: 20px;
+            text-align: center;
+        }
+        
+        .sidebar hr {
+            border-color: rgba(255,255,255,0.2);
+            margin: 10px 0;
+        }
+        
+        .logo-text {
+            color: #ffffff;
+            font-size: 1.2rem;
+        }
+        
+        .logo-icon {
+            color: #ffd700;
+            font-size: 2.5rem;
+        }
+        
+        .badge-role {
+            font-size: 12px;
+            padding: 5px 12px;
+            background-color: #ffd700 !important;
+            color: #1a472a !important;
+        }
+        
+        /* Contenido principal */
+        .main-content {
+            padding: 20px;
+            transition: all 0.3s;
+        }
+        
+        .welcome-banner {
+            background: linear-gradient(135deg, #1a472a 0%, #2d6a4f 100%);
+            color: white;
+            padding: 20px 25px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+        }
+        
+        .card-stats {
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+            border: none;
+        }
+        
+        .card-stats:hover {
+            transform: translateY(-5px);
+        }
+        
+        .chart-container {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            margin-bottom: 20px;
+        }
+        
+        /* Tablas responsivas */
+        .table-responsive-custom {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .table {
+            min-width: 600px;
+        }
+        
+        .table th, .table td {
+            white-space: nowrap;
+        }
+        
+        .btn-mobile {
+            padding: 8px 16px;
+            font-size: 14px;
+        }
+        
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #1a472a;
+            border-radius: 10px;
+        }
+        
+        /* Botón menú hamburguesa */
+        .menu-toggle {
+            display: none;
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            z-index: 1001;
+            background: #1a472a;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 15px;
+            cursor: pointer;
+            font-size: 18px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+        
+        .menu-toggle i {
+            margin-right: 5px;
+        }
+        
+        /* Overlay para cerrar menú en móvil */
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+            cursor: pointer;
+        }
+        
+        .sidebar-overlay.active {
+            display: block;
+        }
+        
+        /* Media Queries */
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                left: -280px;
+                width: 280px;
+                z-index: 1000;
+                transition: left 0.3s ease;
+                overflow-y: auto;
+                top: 0;
+                bottom: 0;
+            }
+            
+            .sidebar.active {
+                left: 0;
+            }
+            
+            .main-content {
+                margin-left: 0 !important;
+                width: 100%;
+            }
+            
+            .menu-toggle {
+                display: block;
+            }
+            
+            .welcome-banner {
+                margin-top: 55px;
+            }
+            
+            .card-stats {
+                margin-bottom: 15px;
+            }
+            
+            .welcome-banner h3 {
+                font-size: 1.2rem;
+            }
+            
+            .welcome-banner p {
+                font-size: 0.85rem;
+            }
+        }
+        
+        @media (max-width: 576px) {
+            .main-content {
+                padding: 10px;
+            }
+            
+            .welcome-banner {
+                padding: 15px;
+            }
+            
+            .chart-container {
+                padding: 10px;
+            }
+            
+            .btn-mobile {
+                width: 100%;
+                margin-bottom: 5px;
+            }
+            
+            .card-stats h5 {
+                font-size: 0.9rem;
+            }
+            
+            .card-stats h2 {
+                font-size: 1.5rem;
+            }
+        }
+        
+        .logout-btn {
+            cursor: pointer;
+        }
+        
+        canvas {
+            max-width: 100%;
+            height: auto !important;
+        }
+
+        @media (min-width: 769px) {
+            #sidebar {
+                flex: 0 0 240px;
+                max-width: 240px;
+                width: 240px;
+            }
+
+            .main-content {
+                flex: 1 1 calc(100% - 240px);
+                max-width: calc(100% - 240px);
+                width: calc(100% - 240px);
+            }
+        }
+
+        .erp-dashboard {
+            display: grid;
+            gap: 18px;
+            min-width: 0;
+        }
+
+        .erp-dashboard > * {
+            max-width: 100%;
+            min-width: 0;
+        }
+
+        .erp-toolbar,
+        .erp-section {
+            background: #ffffff;
+            border: 1px solid #e5e9f2;
+            border-radius: 8px;
+            box-shadow: 0 10px 24px rgba(20, 35, 55, 0.08);
+            min-width: 0;
+        }
+
+        .erp-toolbar {
+            padding: 18px;
+        }
+
+        .erp-section {
+            padding: 18px;
+        }
+
+        .erp-section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 14px;
+            flex-wrap: wrap;
+            min-width: 0;
+        }
+
+        .erp-section-title {
+            margin: 0;
+            font-size: 1rem;
+            font-weight: 700;
+            color: #17324d;
+        }
+
+        .erp-section-subtitle {
+            margin: 4px 0 0;
+            color: #64748b;
+            font-size: 0.86rem;
+        }
+
+        .erp-kpi-card {
+            height: 100%;
+            border: 1px solid #e6ebf3;
+            border-radius: 8px;
+            background: #ffffff;
+            box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08);
+            padding: 18px;
+        }
+
+        .erp-kpi-card .kpi-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffffff;
+            font-size: 1.1rem;
+        }
+
+        .erp-kpi-card .kpi-label {
+            color: #64748b;
+            font-size: 0.82rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .erp-kpi-card .kpi-value {
+            color: #102033;
+            font-size: 1.55rem;
+            font-weight: 800;
+            line-height: 1.2;
+            word-break: break-word;
+        }
+
+        .kpi-blue { background: #2563eb; }
+        .kpi-teal { background: #0f766e; }
+        .kpi-green { background: #15803d; }
+        .kpi-amber { background: #d97706; }
+        .kpi-purple { background: #6d28d9; }
+        .kpi-red { background: #dc2626; }
+
+        .erp-filter-grid {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(150px, 1fr));
+            gap: 12px;
+        }
+
+        .erp-chart-box {
+            height: 280px;
+            position: relative;
+        }
+
+        .erp-chart-box canvas {
+            height: 100% !important;
+        }
+
+        .erp-table {
+            min-width: 760px;
+        }
+
+        .erp-table thead th {
+            background: #17324d;
+            color: #ffffff;
+            border: 0;
+            font-size: 0.78rem;
+            letter-spacing: 0;
+            text-transform: uppercase;
+        }
+
+        .erp-table tbody tr:nth-child(even) {
+            background: #f8fafc;
+        }
+
+        .erp-table tbody tr:hover {
+            background: #eef6ff;
+        }
+
+        .erp-status-badge,
+        .erp-type-badge {
+            border-radius: 999px;
+            padding: 6px 10px;
+            font-weight: 700;
+            font-size: 0.75rem;
+        }
+
+        .erp-bank-map {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .erp-bank-card {
+            border: 1px solid #e5e9f2;
+            border-radius: 8px;
+            background: #ffffff;
+            padding: 14px;
+            box-shadow: 0 8px 18px rgba(15, 23, 42, 0.07);
+        }
+
+        .erp-bank-url {
+            color: #64748b;
+            font-size: 0.8rem;
+            overflow-wrap: anywhere;
+        }
+
+        @media (max-width: 1200px) {
+            .erp-filter-grid,
+            .erp-bank-map {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 768px) {
+            .erp-section-header {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .erp-filter-grid,
+            .erp-bank-map {
+                grid-template-columns: 1fr;
+            }
+
+            .erp-chart-box {
+                height: 240px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Botón menú hamburguesa -->
+    <button class="menu-toggle" id="menuToggle">
+        <i class="fas fa-bars"></i> Menú
+    </button>
+    
+    <!-- Overlay para cerrar menú -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-2 p-0 sidebar" id="sidebar">
+                <div class="text-center py-4">
+                    <i class="fas fa-university logo-icon"></i>
+                    <h5 class="logo-text mt-2">Banco Industrial</h5>
+                    <span id="roleBadge" class="badge mt-2 badge-role"></span>
+                </div>
+                <nav class="nav flex-column">
+                    <!-- Opciones comunes -->
+                    <a class="nav-link active" id="navDashboard">
+                        <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+                    </a>
+                    <a class="nav-link" id="navCuentas">
+                        <i class="fas fa-credit-card me-2"></i>Mis Cuentas
+                    </a>
+                    <a class="nav-link" id="navTransferencias">
+                        <i class="fas fa-exchange-alt me-2"></i>Transferencias
+                    </a>
+                    <a class="nav-link" id="navInterbancaria">
+                        <i class="fas fa-globe-americas me-2"></i>Interbancarias
+                    </a>
+                    
+                    <a class="nav-link" id="navHistorial">
+                        <i class="fas fa-history me-2"></i>Historial
+                    </a>
+                    
+                    <!-- Opciones solo para CLIENTE -->
+                    <div id="clienteMenu">
+                        <a class="nav-link" id="navVincularCuenta">
+                            <i class="fas fa-link me-2"></i>Vincular Cuenta
+                        </a>
+                        <a class="nav-link" id="navCrearCuenta">
+                            <i class="fas fa-plus-circle me-2"></i>Crear Nueva Cuenta
+                        </a>
+                    </div>
+                    
+                    <!-- Opciones solo para CAJERO y ADMIN -->
+                    <div id="cajeroMenu" style="display: none;">
+                        <hr class="bg-light">
+                        <a class="nav-link" id="navResumenDia">
+                            <i class="fas fa-chart-line me-2"></i>Resumen del Día
+                        </a>
+                        <a class="nav-link" id="navBuscarCuenta">
+                            <i class="fas fa-search me-2"></i>Buscar Cuenta
+                        </a>
+                        <a class="nav-link" id="navDeposito">
+                            <i class="fas fa-plus-circle me-2"></i>Depósito
+                        </a>
+                        <a class="nav-link" id="navRetiro">
+                            <i class="fas fa-minus-circle me-2"></i>Retiro
+                        </a>
+                        <a class="nav-link" id="navTransferenciaAsistida">
+                            <i class="fas fa-hand-holding-usd me-2"></i>Transferencia Asistida
+                        </a>
+                        <a class="nav-link" id="navAperturaCuenta">
+                            <i class="fas fa-user-plus me-2"></i>Apertura de Cuenta
+                        </a>
+                    </div>
+
+                    <!-- Opciones ERP para ADMIN, CAJERO y GERENTE -->
+                    <div id="erpMenu" style="display: none;">
+                        <hr class="bg-light">
+                        <a class="nav-link" id="navAdminERP">
+                            <i class="fas fa-briefcase me-2"></i>Administración ERP
+                        </a>
+                    </div>
+                    <a class="nav-link" id="navCambiarPassword">
+                         <i class="fas fa-key me-2"></i>Cambiar Contraseña
+                    </a>
+                    <hr class="bg-light">
+                    <a class="nav-link logout-btn" id="logoutBtn">
+                        <i class="fas fa-sign-out-alt me-2"></i>Cerrar Sesión
+                    </a>
+                </nav>
+            </div>
+
+            <div class="col-md-10 main-content">
+                <div class="welcome-banner">
+                    <h3 id="pageTitle"><i class="fas fa-tachometer-alt me-2"></i>Dashboard</h3>
+                    <p id="userInfoText" class="mb-0"></p>
+                </div>
+                <div id="dashboardContent"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/dashboard.js"></script>
+    
+    <script>
+        (function() {
+            // Elementos
+            const menuToggle = document.getElementById('menuToggle');
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            
+            // Función para abrir menú
+            function openMenu() {
+                if (sidebar) {
+                    sidebar.classList.add('active');
+                }
+                if (overlay) {
+                    overlay.classList.add('active');
+                }
+                document.body.style.overflow = 'hidden';
+                console.log('Menú abierto');
+            }
+            
+            // Función para cerrar menú
+            function closeMenu() {
+                if (sidebar) {
+                    sidebar.classList.remove('active');
+                }
+                if (overlay) {
+                    overlay.classList.remove('active');
+                }
+                document.body.style.overflow = '';
+                console.log('Menú cerrado');
+            }
+            
+            // Evento del botón hamburguesa
+            if (menuToggle) {
+                menuToggle.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    openMenu();
+                });
+            } else {
+                console.log('Error: menuToggle no encontrado');
+            }
+            
+            // Evento del overlay
+            if (overlay) {
+                overlay.addEventListener('click', closeMenu);
+            }
+            
+            // Cerrar menú al hacer click en un link del sidebar
+            const navLinks = document.querySelectorAll('.sidebar .nav-link');
+            navLinks.forEach(function(link) {
+                link.addEventListener('click', function() {
+                    if (window.innerWidth <= 768) {
+                        closeMenu();
+                    }
+                });
+            });
+            
+            // Cerrar menú al redimensionar a desktop
+            window.addEventListener('resize', function() {
+                if (window.innerWidth > 768) {
+                    closeMenu();
+                }
+            });
+            
+            // Verificar en consola si funciona
+            console.log('Script de menú cargado');
+            console.log('menuToggle existe:', !!menuToggle);
+            console.log('sidebar existe:', !!sidebar);
+            console.log('overlay existe:', !!overlay);
+        })();
+    </script>
+</body>
+</html>

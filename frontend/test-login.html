@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Test Login Banco</title>
+    <style>
+        body { font-family: Arial; padding: 50px; }
+        input, button { padding: 10px; margin: 5px; }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <h2>Login Banco Industrial</h2>
+    <input type="text" id="username" placeholder="Usuario" value="admin"><br>
+    <input type="password" id="password" placeholder="Contraseña" value="Admin123!"><br>
+    <button onclick="login()">Ingresar</button>
+    <div id="resultado"></div>
+
+    <script>
+        async function login() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const resultado = document.getElementById('resultado');
+            
+            resultado.innerHTML = 'Cargando...';
+            
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password, accessType: 'cajero' })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    resultado.innerHTML = '<span class="success">✅ Login exitoso! Redirigiendo...</span>';
+                    setTimeout(() => {
+                        window.location.href = '/dashboard.html';
+                    }, 1000);
+                } else {
+                    resultado.innerHTML = '<span class="error">❌ Error: ' + data.error + '</span>';
+                }
+            } catch (error) {
+                resultado.innerHTML = '<span class="error">❌ Error de conexión: ' + error.message + '</span>';
+            }
+        }
+    </script>
+</body>
+</html>
