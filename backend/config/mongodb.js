@@ -10,6 +10,12 @@ let client = null;
 let database = null;
 let connectionPromise = null;
 
+const TELEGRAM_COLLECTIONS = [
+    'usuarios_telegram',
+    'notificaciones_telegram',
+    'logs_telegram'
+];
+
 function sameIndexKey(currentKey, desiredKey) {
     const current = JSON.stringify(currentKey || {});
     const desired = JSON.stringify(desiredKey || {});
@@ -26,6 +32,30 @@ async function ensureIndex(collection, keys, options = {}) {
     }
 
     return collection.createIndex(keys, options);
+}
+
+async function ensureCollection(db, collectionName) {
+    const exists = await db.listCollections({ name: collectionName }, { nameOnly: true }).hasNext();
+
+    if (exists) {
+        return;
+    }
+
+    try {
+        await db.createCollection(collectionName);
+    } catch (error) {
+        if (error.codeName === 'NamespaceExists' || error.code === 48) {
+            return;
+        }
+
+        throw error;
+    }
+}
+
+async function ensureCollections(db) {
+    for (const collectionName of TELEGRAM_COLLECTIONS) {
+        await ensureCollection(db, collectionName);
+    }
 }
 
 async function createIndexes(db) {
@@ -67,6 +97,7 @@ async function connectMongo() {
                await client.connect();
                database = client.db(databaseName);
                try {
+                   await ensureCollections(database);
                    await createIndexes(database);
                } catch (indexError) {
                    console.error('[Telegram] error creando indices Mongo:', indexError.message);
