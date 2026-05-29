@@ -1,280 +1,116 @@
-# Formatos de integracion interbancaria
+# Formato interbancario estandar
 
-El backend usa un formato interno comun y adaptadores por SWIFT para hablar con bancos externos sin cambiar la logica bancaria local.
+El flujo interbancario vigente usa un unico formato JSON acordado por los bancos. Los adaptadores antiguos quedan solo como soporte de parseo de respuestas, pero las transferencias salientes y entrantes trabajan con este contrato.
 
-## Formato interno
+## Contrato obligatorio
 
 ```json
 {
-  "swiftOrigen": "INDLGTGC",
-  "swiftDestino": "GTB666",
-  "cuentaOrigen": "GT100000001",
+  "TransactionID": "BIGT2026-20260528-143005-A1B2",
+  "cuentaOrigen": "GT17798309563044741",
+  "swiftOrigen": "BIGT2026",
   "cuentaDestino": "EXT123",
-  "nombreOrigen": "Administrador Sistema",
-  "nombreDestino": "Cliente externo",
+  "swiftDestino": "GTB666",
+  "NombreOrigen": "Maria Lopez",
   "monto": 100.5,
-  "moneda": "GTQ",
-  "referencia": "SWIFT-OUT-...",
-  "idempotencyKey": "clave-unica"
+  "descripcion": "Transferencia interbancaria"
 }
 ```
 
-## Como nos consumen otros bancos
+Campos requeridos:
 
-Endpoint:
+- `TransactionID`
+- `cuentaOrigen`
+- `swiftOrigen`
+- `cuentaDestino`
+- `swiftDestino`
+- `NombreOrigen`
+- `monto`
+
+`monto` debe ser mayor a `0`. La moneda se asume siempre como `GTQ`.
+
+## Transferencias salientes
+
+Endpoint interno para clientes autenticados:
+
+```http
+POST /api/interbancaria/transferir
+Authorization: Bearer JWT
+Content-Type: application/json
+```
+
+Request desde el dashboard:
+
+```json
+{
+  "cuentaOrigen": "GT17798309563044741",
+  "swiftDestino": "GTB666",
+  "cuentaDestino": "EXT123",
+  "monto": 100.5,
+  "descripcion": "Transferencia interbancaria"
+}
+```
+
+El backend valida cuenta origen, saldo y banco destino. Luego genera `TransactionID` con formato:
+
+```text
+BIGT2026-YYYYMMDD-HHMMSS-XXXX
+```
+
+Ese mismo valor se guarda como `referenciaInterna` e `idempotencyKey` y se envia al banco externo en el formato estandar.
+
+## Transferencias entrantes
+
+Endpoint publico para otros bancos:
 
 ```http
 POST /api/interbancaria/entrante
+Content-Type: application/json
 ```
 
-Formato nuestro:
+Request esperado:
 
 ```json
 {
-  "swiftOrigen": "BANCOEXT",
-  "swiftDestino": "INDLGTGC",
-  "cuentaOrigen": "EXT-001",
-  "cuentaDestino": "GT100000001",
-  "nombreOrigen": "Cliente externo",
-  "monto": 50,
-  "moneda": "GTQ",
-  "referencia": "EXT-REF-001",
-  "idempotencyKey": "EXT-REF-001"
+  "TransactionID": "GTTBXXXX-20260528-143005-B7C9",
+  "cuentaOrigen": "TB-10001",
+  "swiftOrigen": "GTTBXXXX",
+  "cuentaDestino": "GT17798309563044741",
+  "swiftDestino": "BIGT2026",
+  "NombreOrigen": "Cliente externo",
+  "monto": 125.5,
+  "descripcion": "Transferencia recibida"
 }
 ```
 
-Formato GTB666 aceptado:
+Reglas de entrada:
 
-```json
-{
-  "transactionId": "GTB-TX-001",
-  "swiftDestino": "INDLGTGC",
-  "cuentaOrigenExterna": "EXT-001",
-  "cuentaDestinoExterna": "GT100000001",
-  "bancoOrigen": "GTB666",
-  "monto": 50,
-  "direccion": "ENTRANTE"
-}
-```
+- `swiftDestino` debe coincidir con `LOCAL_BANK_SWIFT`.
+- `TransactionID` se usa como referencia interna e idempotencyKey.
+- Si la cuenta destino local existe, se acredita el saldo y se registra movimiento.
+- Si Telegram esta vinculado, se notifica sin interrumpir la transferencia si falla.
 
-Formato PascalCase aceptado:
-
-```json
-{
-  "TransactionId": "TX-001",
-  "SwiftDestino": "INDLGTGC",
-  "CuentaOrigen": "EXT-001",
-  "CuentaDestino": "GT100000001",
-  "Monto": 50
-}
-```
-
-Si el formato PascalCase no envia banco de origen, el backend usa el header `X-Bank-Swift` cuando existe. Si tampoco viene ese header, registra el origen como `EXTERNO`.
-
-Respuesta exitosa:
+Respuesta confirmada:
 
 ```json
 {
   "success": true,
   "estado": "CONFIRMADA",
-  "referenciaInterna": "SWIFT-IN-...",
+  "referenciaInterna": "GTTBXXXX-20260528-143005-B7C9",
   "mensaje": "Transferencia recibida correctamente"
 }
 ```
 
-## Como consumimos Turbio Bank
+## Bancos configurados
 
-SWIFT: `GTTBXXXX`
+Todos los bancos se consumen con el mismo payload estandar:
 
-Base URL:
+- Turbio Bank: `GTTBXXXX`
+- NovaBank: `GTB666`
+- Banco Los Canchitos: `GTBC6968`
+- DEFAULT: cualquier otro banco activo
 
-```text
-https://repo-banco-api-desarrollo.up.railway.app
-```
-
-Endpoint de validacion/transferencia:
-
-```text
-/api/transferencia/validar
-```
-
-Payload enviado:
-
-```json
-{
-  "TransactionID": "SWIFT-OUT-...",
-  "cuentaOrigen": "GT100000001",
-  "swiftOrigen": "INDLGTGC",
-  "cuentaDestino": "EXT123",
-  "swiftDestino": "GTTBXXXX",
-  "NombreOrigen": "Administrador Sistema",
-  "monto": 100.5,
-  "descripcion": "Transferencia interbancaria"
-}
-```
-
-Respuesta de exito aceptada:
-
-```json
-"APROBADO"
-```
-
-## Como consumimos NovaBank
-
-SWIFT: `GTB666`
-
-Base URL:
-
-```text
-https://apibanca.onrender.com
-```
-
-Endpoint de transferencia entrante:
-
-```text
-/api/transferencias/interbancaria/entrante
-```
-
-Payload de transferencia:
-
-```json
-{
-  "TransactionID": "SWIFT-OUT-...",
-  "CuentaOrigen": "GT100000001",
-  "CuentaDestino": "EXT123",
-  "SwiftOrigen": "INDLGTGC",
-  "SwiftDestino": "GTB666",
-  "Monto": "100.5",
-  "Tipo": "ACH",
-  "Estado": "APROBADO",
-  "Descripcion": "Transferencia interbancaria",
-  "NombreOrigen": "Administrador Sistema"
-}
-```
-
-Validacion de cuenta:
-
-```json
-{
-  "CuentaDestino": "EXT123",
-  "TransactionID": "SWIFT-VAL-..."
-}
-```
-
-Si NovaBank responde que faltan campos requeridos, el adaptador intenta fallback con `TransactionId`:
-
-```json
-{
-  "CuentaDestino": "EXT123",
-  "TransactionId": "SWIFT-VAL-..."
-}
-```
-
-## Como consumimos Banco Los Canchitos
-
-SWIFT: `GTBC6968`
-
-Base URL:
-
-```text
-https://api-proyecto-production-c611.up.railway.app
-```
-
-Endpoint principal:
-
-```text
-/api/transferencias
-```
-
-Endpoint alterno:
-
-```text
-/api/transferencias/interbancaria/entrante
-```
-
-Validacion de cuenta:
-
-```json
-{
-  "cuentaDestino": "EXT123",
-  "swiftDestino": "GTBC6968"
-}
-```
-
-Transferencia saliente:
-
-```json
-{
-  "cuenta_origen": "GT100000001",
-  "cuenta_destino": "EXT123",
-  "swift_destino": "GTBC6968",
-  "monto": 100.5,
-  "descripcion": "Transferencia interbancaria"
-}
-```
-
-## Como consumir DEFAULT
-
-Validacion de cuenta:
-
-```json
-{
-  "swiftDestino": "RWL001",
-  "cuentaDestino": "EXT123",
-  "numeroCuenta": "EXT123",
-  "referencia": "SWIFT-VAL-..."
-}
-```
-
-Transferencia saliente:
-
-```json
-{
-  "swiftOrigen": "INDLGTGC",
-  "swiftDestino": "RWL001",
-  "cuentaOrigen": "GT100000001",
-  "cuentaDestino": "EXT123",
-  "nombreOrigen": "Administrador Sistema",
-  "monto": 100.5,
-  "moneda": "GTQ",
-  "referencia": "SWIFT-OUT-...",
-  "idempotencyKey": "clave-unica"
-}
-```
-
-## Errores posibles
-
-```json
-{
-  "success": false,
-  "error": "swiftDestino debe ser INDLGTGC"
-}
-```
-
-```json
-{
-  "success": false,
-  "error": "Cuenta destino local no encontrada"
-}
-```
-
-```json
-{
-  "success": false,
-  "error": "Banco destino no encontrado o inactivo"
-}
-```
-
-```json
-{
-  "success": false,
-  "error": "Cuenta destino rechazada por banco externo"
-}
-```
-
-## Respuestas externas aceptadas
-
-El parser interbancario trata como exito:
+Las respuestas externas se interpretan como exito si devuelven:
 
 ```json
 "APROBADO"
@@ -300,26 +136,47 @@ El parser interbancario trata como exito:
 }
 ```
 
-Y trata como fallo:
+Se interpretan como rechazo si devuelven `RECHAZADO`, `success: false`, `valida: false` o un estado de error.
+
+## Errores posibles
 
 ```json
 {
-  "estado": "RECHAZADO"
+  "success": false,
+  "error": "Campos requeridos faltantes: TransactionID, NombreOrigen"
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "El monto debe ser mayor a cero"
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "swiftDestino debe ser BIGT2026"
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "Cuenta destino local no encontrada"
 }
 ```
 
 ## Logs
 
-El backend imprime logs temporales para auditoria tecnica:
+Logs principales:
 
 ```text
-[Interbank][GTTBXXXX][VALIDATE] payload enviado
-[Interbank][GTTBXXXX][VALIDATE] respuesta recibida
-[Interbank][GTB666][TRANSFER] payload enviado
-[Interbank][GTB666][TRANSFER] respuesta recibida
-[Interbank][GTBC6968][TRANSFER] payload enviado
-[Interbank][GTBC6968][TRANSFER] respuesta recibida
+[Interbank][SWIFT][REQUEST]
+[Interbank][SWIFT][RESPONSE]
 [Interbank][INCOMING] payload normalizado
+[Interbank][INCOMING] cuentaDestino normalizada: ...
 ```
 
-Ademas, cuando la tabla `transferencias_interbancarias` tiene las columnas `request_payload` y `response_payload`, el servicio guarda el JSON enviado y recibido en esas columnas.
+El servicio conserva `request_payload` y `response_payload` en `transferencias_interbancarias` cuando las columnas existen.

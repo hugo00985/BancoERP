@@ -42,6 +42,19 @@ function buildTransactionId(input) {
     ]);
 }
 
+function buildStandardInterbankPayload(input, { validation = false } = {}) {
+    return {
+        TransactionID: buildTransactionId(input),
+        cuentaOrigen: normalizeAccountValue(inputValue(input, ['cuentaOrigen', 'CuentaOrigen', 'cuenta_origen'])),
+        swiftOrigen: normalizeSwift(inputValue(input, ['swiftOrigen', 'SwiftOrigen', 'swift_origen'])),
+        cuentaDestino: normalizeAccountValue(inputValue(input, ['cuentaDestino', 'CuentaDestino', 'cuentaDestinoExterna', 'cuenta_destino'])),
+        swiftDestino: normalizeSwift(inputValue(input, ['swiftDestino', 'SwiftDestino', 'swift_destino'])),
+        NombreOrigen: inputValue(input, ['nombreOrigen', 'NombreOrigen'], ''),
+        monto: Number(inputValue(input, ['monto', 'Monto'], validation ? 1 : 0)),
+        descripcion: inputValue(input, ['descripcion', 'Descripcion'], validation ? 'Validacion de cuenta interbancaria' : 'Transferencia interbancaria')
+    };
+}
+
 function buildNovaBankPayload(input, { validation = false } = {}) {
     const monto = inputValue(input, ['monto', 'Monto'], validation ? 0 : 0);
     const transactionId = buildTransactionId(input);
@@ -189,27 +202,11 @@ function parseOutgoingTransferResponse(response) {
 const DEFAULT = {
     swift: 'DEFAULT',
     buildValidateAccountPayload(input) {
-        return {
-            swiftDestino: input.swiftDestino,
-            cuentaDestino: input.cuentaDestino,
-            numeroCuenta: input.cuentaDestino,
-            referencia: input.referencia
-        };
+        return buildStandardInterbankPayload(input, { validation: true });
     },
     parseValidateAccountResponse,
     buildOutgoingTransferPayload(input) {
-        return {
-            swiftOrigen: input.swiftOrigen,
-            swiftDestino: input.swiftDestino,
-            cuentaOrigen: input.cuentaOrigen,
-            cuentaDestino: input.cuentaDestino,
-            nombreOrigen: input.nombreOrigen,
-            monto: input.monto,
-            moneda: input.moneda,
-            referencia: input.referencia,
-            idempotencyKey: input.idempotencyKey,
-            descripcion: input.descripcion
-        };
+        return buildStandardInterbankPayload(input);
     },
     parseOutgoingTransferResponse
 };
@@ -217,29 +214,11 @@ const DEFAULT = {
 const GTTBXXXX = {
     swift: 'GTTBXXXX',
     buildValidateAccountPayload(input) {
-        return {
-            TransactionID: buildTransactionId(input),
-            cuentaOrigen: normalizeAccountValue(inputValue(input, ['cuentaOrigen', 'CuentaOrigen', 'cuenta_origen'], '')),
-            swiftOrigen: normalizeSwift(inputValue(input, ['swiftOrigen', 'SwiftOrigen', 'swift_origen'])),
-            cuentaDestino: normalizeAccountValue(inputValue(input, ['cuentaDestino', 'CuentaDestino', 'cuentaDestinoExterna', 'cuenta_destino'])),
-            swiftDestino: 'GTTBXXXX',
-            NombreOrigen: inputValue(input, ['nombreOrigen', 'NombreOrigen'], ''),
-            monto: inputValue(input, ['monto', 'Monto'], 0),
-            descripcion: inputValue(input, ['descripcion', 'Descripcion'], 'Validacion de cuenta interbancaria')
-        };
+        return buildStandardInterbankPayload(input, { validation: true });
     },
     parseValidateAccountResponse,
     buildOutgoingTransferPayload(input) {
-        return {
-            TransactionID: buildTransactionId(input),
-            cuentaOrigen: normalizeAccountValue(inputValue(input, ['cuentaOrigen', 'CuentaOrigen', 'cuenta_origen'])),
-            swiftOrigen: normalizeSwift(inputValue(input, ['swiftOrigen', 'SwiftOrigen', 'swift_origen'])),
-            cuentaDestino: normalizeAccountValue(inputValue(input, ['cuentaDestino', 'CuentaDestino', 'cuentaDestinoExterna', 'cuenta_destino'])),
-            swiftDestino: 'GTTBXXXX',
-            NombreOrigen: inputValue(input, ['nombreOrigen', 'NombreOrigen']),
-            monto: inputValue(input, ['monto', 'Monto']),
-            descripcion: inputValue(input, ['descripcion', 'Descripcion'], 'Transferencia interbancaria')
-        };
+        return buildStandardInterbankPayload(input);
     },
     parseOutgoingTransferResponse
 };
@@ -247,18 +226,13 @@ const GTTBXXXX = {
 const GTB666 = {
     swift: 'GTB666',
     buildValidateAccountPayload(input) {
-        return buildNovaBankPayload(input, { validation: true });
+        return buildStandardInterbankPayload(input, { validation: true });
     },
-    buildValidateAccountFallbackPayload(input) {
-        return {
-            CuentaDestino: normalizeAccountValue(inputValue(input, ['cuentaDestino', 'CuentaDestino', 'cuentaDestinoExterna', 'cuenta_destino'])),
-            TransactionId: buildTransactionId(input)
-        };
-    },
-    shouldRetryValidateFallback: hasRequiredFieldError,
+    legacyBuildValidateAccountPayload: buildNovaBankPayload,
+    legacyShouldRetryValidateFallback: hasRequiredFieldError,
     parseValidateAccountResponse,
     buildOutgoingTransferPayload(input) {
-        return buildNovaBankPayload(input);
+        return buildStandardInterbankPayload(input);
     },
     parseOutgoingTransferResponse
 };
@@ -267,19 +241,10 @@ const GTBC6968 = {
     ...DEFAULT,
     swift: 'GTBC6968',
     buildValidateAccountPayload(input) {
-        return {
-            cuentaDestino: normalizeAccountValue(inputValue(input, ['cuentaDestino', 'CuentaDestino', 'cuentaDestinoExterna', 'cuenta_destino'])),
-            swiftDestino: 'GTBC6968'
-        };
+        return buildStandardInterbankPayload(input, { validation: true });
     },
     buildOutgoingTransferPayload(input) {
-        return {
-            cuenta_origen: normalizeAccountValue(inputValue(input, ['cuentaOrigen', 'CuentaOrigen', 'cuenta_origen'])),
-            cuenta_destino: normalizeAccountValue(inputValue(input, ['cuentaDestino', 'CuentaDestino', 'cuentaDestinoExterna', 'cuenta_destino'])),
-            swift_destino: 'GTBC6968',
-            monto: inputValue(input, ['monto', 'Monto']),
-            descripcion: inputValue(input, ['descripcion', 'Descripcion'], 'Transferencia interbancaria')
-        };
+        return buildStandardInterbankPayload(input);
     }
 };
 
@@ -304,11 +269,11 @@ function normalizeIncomingTransferPayload(body = {}, headers = {}, defaults = {}
     const headerIdempotency = firstValue(headers, ['idempotency-key', 'Idempotency-Key']);
     const headerSwiftOrigen = firstValue(headers, ['x-bank-swift', 'X-Bank-Swift']);
     const referencia = firstValue(body, [
-        'referencia',
-        'referenciaExterna',
+        'TransactionID',
         'transactionId',
         'TransactionId',
-        'TransactionID',
+        'referencia',
+        'referenciaExterna',
         'numeroComprobante',
         'idempotencyKey',
         'IdempotencyKey'
@@ -346,28 +311,28 @@ function normalizeIncomingTransferPayload(body = {}, headers = {}, defaults = {}
         swiftDestino: swiftDestino || normalizeSwift(defaults.swiftDestino),
         cuentaOrigen: normalizeAccountValue(firstValue(body, [
             'cuentaOrigen',
-            'numeroCuentaOrigen',
-            'cuenta_origen',
-            'cuentaOrigenExterna',
-            'CuentaOrigen'
-        ])),
-        cuentaDestino,
-        nombreOrigen: firstValue(body, ['nombreOrigen', 'NombreOrigen']),
+        'numeroCuentaOrigen',
+        'cuenta_origen',
+        'cuentaOrigenExterna',
+        'CuentaOrigen'
+    ])),
+    cuentaDestino,
+        nombreOrigen: firstValue(body, ['NombreOrigen', 'nombreOrigen']),
         nombreDestino: firstValue(body, ['nombreDestino', 'NombreDestino']),
         monto: firstValue(body, ['monto', 'Monto']),
-        moneda: String(firstValue(body, ['moneda', 'Moneda']) || defaults.moneda || 'GTQ').trim().toUpperCase(),
+        moneda: 'GTQ',
         descripcion: firstValue(body, ['descripcion', 'Descripcion']),
         referencia,
-        idempotencyKey: String(headerIdempotency || firstValue(body, [
+        idempotencyKey: String(firstValue(body, [
+            'TransactionID',
             'idempotencyKey',
             'IdempotencyKey',
             'transactionId',
             'TransactionId',
-            'TransactionID',
             'numeroComprobante',
             'referencia',
             'referenciaExterna'
-        ]) || '').trim(),
+        ]) || headerIdempotency || '').trim(),
         raw: body
     };
 }
@@ -378,6 +343,7 @@ module.exports = {
     GTB666,
     GTBC6968,
     RWL001,
+    buildStandardInterbankPayload,
     getInterbankAdapter,
     normalizeIncomingTransferPayload,
     normalizeSwift

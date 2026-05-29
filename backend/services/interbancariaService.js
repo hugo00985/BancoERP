@@ -7,8 +7,8 @@ const {
     obtenerBancoPorSwift
 } = require('./bancosExternosService');
 const {
+    buildStandardInterbankPayload,
     getInterbankAdapter,
-    normalizeIncomingTransferPayload
 } = require('../integrations/interbank/adapters');
 
 const LOCAL_BANK_NAME = process.env.BANK_NAME || 'Banco Industrial';
@@ -27,6 +27,19 @@ class InterbankError extends Error {
 
 function createReference(prefix) {
     return `${prefix}-${Date.now()}-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
+}
+
+function pad2(value) {
+    return String(value).padStart(2, '0');
+}
+
+function createStandardTransactionId() {
+    const now = new Date();
+    const datePart = `${now.getFullYear()}${pad2(now.getMonth() + 1)}${pad2(now.getDate())}`;
+    const timePart = `${pad2(now.getHours())}${pad2(now.getMinutes())}${pad2(now.getSeconds())}`;
+    const suffix = crypto.randomBytes(2).toString('hex').toUpperCase();
+
+    return `${LOCAL_BANK_SWIFT}-${datePart}-${timePart}-${suffix}`;
 }
 
 function hashApiKey(apiKey) {
@@ -130,6 +143,69 @@ function normalizeAccountNumber(value) {
 
     const normalized = String(value).trim();
     return normalized || null;
+}
+
+function hasRequiredValue(value) {
+    return value !== undefined
+        && value !== null
+        && String(value).trim() !== '';
+}
+
+function validateStandardApiPayload(payload) {
+    const requiredFields = [
+        'TransactionID',
+        'cuentaOrigen',
+        'swiftOrigen',
+        'cuentaDestino',
+        'swiftDestino',
+        'NombreOrigen',
+        'monto'
+    ];
+    const missing = requiredFields.filter((field) => !hasRequiredValue(payload[field]));
+
+    if (missing.length > 0) {
+        throw new InterbankError(400, `Campos requeridos faltantes: ${missing.join(', ')}`);
+    }
+
+    return {
+        TransactionID: String(payload.TransactionID).trim(),
+        cuentaOrigen: normalizeAccountNumber(payload.cuentaOrigen),
+        swiftOrigen: normalizeSwift(payload.swiftOrigen),
+        cuentaDestino: normalizeAccountNumber(payload.cuentaDestino),
+        swiftDestino: normalizeSwift(payload.swiftDestino),
+        NombreOrigen: String(payload.NombreOrigen).trim(),
+        monto: parseAmount(payload.monto),
+        descripcion: String(payload.descripcion || '').trim()
+    };
+}
+
+function normalizeStandardIncomingPayload(body = {}) {
+    const standardPayload = validateStandardApiPayload({
+        TransactionID: body.TransactionID,
+        cuentaOrigen: body.cuentaOrigen,
+        swiftOrigen: body.swiftOrigen,
+        cuentaDestino: body.cuentaDestino,
+        swiftDestino: body.swiftDestino,
+        NombreOrigen: body.NombreOrigen,
+        monto: body.monto,
+        descripcion: body.descripcion
+    });
+
+    return {
+        swiftOrigen: standardPayload.swiftOrigen,
+        swiftDestino: standardPayload.swiftDestino,
+        cuentaOrigen: standardPayload.cuentaOrigen,
+        cuentaDestino: standardPayload.cuentaDestino,
+        nombreOrigen: standardPayload.NombreOrigen,
+        nombreDestino: null,
+        monto: standardPayload.monto,
+        moneda: 'GTQ',
+        descripcion: standardPayload.descripcion || 'Transferencia interbancaria recibida',
+        referencia: standardPayload.TransactionID,
+        idempotencyKey: standardPayload.TransactionID,
+        standardPayload,
+        raw: body
+    };
 }
 
 function getExternalBankToken(bancoExterno) {
@@ -372,7 +448,7 @@ function normalizeCuentaValidationInput(input, bancoExterno) {
         cuentaOrigen: getFirstValue(source, ['cuentaOrigen', 'CuentaOrigen', 'numeroCuentaOrigen', 'cuenta_origen', 'numero_cuenta_origen', 'cuentaOrigenExterna']),
         cuentaDestino: rawCuenta,
         nombreOrigen: getFirstValue(source, ['nombreOrigen', 'NombreOrigen']) || LOCAL_BANK_NAME,
-        monto: getFirstValue(source, ['monto', 'Monto']) || 0,
+        monto: getFirstValue(source, ['monto', 'Monto']) || 1,
         descripcion: getFirstValue(source, ['descripcion', 'Descripcion', 'description']) || 'Validacion de cuenta interbancaria',
         referencia,
         idempotencyKey: String(getFirstValue(source, ['idempotencyKey', 'IdempotencyKey']) || referencia).trim()
@@ -445,7 +521,9 @@ async function enviarTransferenciaExterna(banco, transferencia) {
         idempotencyKey: transferencia.idempotencyKey,
         descripcion: transferencia.descripcion
     };
-    const payload = adapter.buildOutgoingTransferPayload(standardInput);
+    const payload = validateStandardApiPayload(
+        transferencia.standardPayload || adapter.buildOutgoingTransferPayload(standardInput)
+    );
     const extraHeaders = buildExternalAuthHeaders(bancoExterno);
     const authEnabled = Boolean(extraHeaders.Authorization);
 
@@ -562,22 +640,13 @@ async function validarApiKeyEntrante(apiKey, swiftOrigen = null) {
     return rows.length > 0;
 }
 
-async function procesarTransferenciaSaliente(body, user, idempotencyHeader = null) {
+async function procesarTransferenciaSaliente(body, user) {
     const cuentaOrigen = getFirstValue(body, ['cuentaOrigen', 'numeroCuentaOrigen', 'cuenta_origen', 'CuentaOrigen', 'cuentaOrigenExterna']);
     const cuentaDestino = getFirstValue(body, ['cuentaDestino', 'numeroCuentaDestino', 'cuenta_destino', 'CuentaDestino', 'cuentaDestinoExterna', 'numeroCuenta']);
     const swiftDestino = normalizeSwift(getFirstValue(body, ['swiftDestino', 'SwiftDestino', 'bancoDestinoSwift', 'swift']));
-    const idempotencyKey = String(
-        idempotencyHeader
-        || body.idempotencyKey
-        || body.IdempotencyKey
-        || body.TransactionID
-        || body.transactionId
-        || body.TransactionId
-        || body.numeroComprobante
-        || body.referencia
-        || createReference('IDEMP')
-    ).trim();
-    const moneda = String(body.moneda || 'GTQ').trim().toUpperCase();
+    const transactionId = createStandardTransactionId();
+    const idempotencyKey = transactionId;
+    const moneda = 'GTQ';
     const descripcion = body.descripcion || body.referencia || 'Transferencia interbancaria SWIFT';
     const monto = parseAmount(body.monto);
 
@@ -624,19 +693,34 @@ async function procesarTransferenciaSaliente(body, user, idempotencyHeader = nul
     }
 
     const numeroCuentaOrigen = cuentaLocal.numero_cuenta;
-    const referenciaInterna = createReference('SWIFT-OUT');
-    const standardTransfer = {
-        swiftOrigen: LOCAL_BANK_SWIFT,
-        swiftDestino,
+    const referenciaInterna = transactionId;
+    const nombreOrigen = `${cuentaLocal.nombre || ''} ${cuentaLocal.apellido || ''}`.trim()
+        || body.NombreOrigen
+        || body.nombreOrigen
+        || LOCAL_BANK_NAME;
+    const standardPayload = validateStandardApiPayload({
+        TransactionID: transactionId,
         cuentaOrigen: numeroCuentaOrigen,
+        swiftOrigen: LOCAL_BANK_SWIFT,
         cuentaDestino,
-        nombreOrigen: `${cuentaLocal.nombre} ${cuentaLocal.apellido}`.trim(),
-        nombreDestino: body.nombreDestino || body.NombreDestino || null,
+        swiftDestino,
+        NombreOrigen: nombreOrigen,
         monto,
-        moneda,
-        referencia: referenciaInterna,
-        idempotencyKey,
         descripcion
+    });
+    const standardTransfer = {
+        swiftOrigen: standardPayload.swiftOrigen,
+        swiftDestino: standardPayload.swiftDestino,
+        cuentaOrigen: standardPayload.cuentaOrigen,
+        cuentaDestino: standardPayload.cuentaDestino,
+        nombreOrigen: standardPayload.NombreOrigen,
+        nombreDestino: body.nombreDestino || body.NombreDestino || null,
+        monto: standardPayload.monto,
+        moneda,
+        referencia: transactionId,
+        idempotencyKey,
+        descripcion: standardPayload.descripcion,
+        standardPayload
     };
     const transferenciaInicial = await insertarTransferenciaInicial({
         tipo: 'SALIENTE',
@@ -654,7 +738,8 @@ async function procesarTransferenciaSaliente(body, user, idempotencyHeader = nul
         idempotencyKey,
         requestPayload: {
             original: body,
-            interno: standardTransfer
+            interno: standardTransfer,
+            estandar: standardPayload
         }
     });
     if (transferenciaInicial.duplicate) {
@@ -670,6 +755,7 @@ async function procesarTransferenciaSaliente(body, user, idempotencyHeader = nul
             request_payload: createJsonLog({
                 original: body,
                 interno: standardTransfer,
+                estandar: standardPayload,
                 validacion: validacion.requestPayload
             }),
             response_payload: createJsonLog({
@@ -685,7 +771,7 @@ async function procesarTransferenciaSaliente(body, user, idempotencyHeader = nul
         ...standardTransfer,
         idempotencyKey,
         referenciaInterna,
-        referencia: referenciaInterna,
+        referencia: transactionId,
         cuentaOrigen: numeroCuentaOrigen,
         cuentaDestino,
         monto,
@@ -700,6 +786,7 @@ async function procesarTransferenciaSaliente(body, user, idempotencyHeader = nul
             request_payload: createJsonLog({
                 original: body,
                 interno: standardTransfer,
+                estandar: standardPayload,
                 validacion: validacion.requestPayload,
                 transferencia: respuestaExterna.requestPayload
             }),
@@ -768,6 +855,7 @@ async function procesarTransferenciaSaliente(body, user, idempotencyHeader = nul
                 createJsonLog({
                     original: body,
                     interno: standardTransfer,
+                    estandar: standardPayload,
                     validacion: validacion.requestPayload,
                     transferencia: respuestaExterna.requestPayload
                 }),
@@ -802,6 +890,7 @@ async function procesarTransferenciaSaliente(body, user, idempotencyHeader = nul
             id: transferenciaId,
             estado: respuestaExterna.estado,
             referenciaInterna,
+            transactionId,
             referenciaExterna: respuestaExterna.referenciaExterna,
             saldoNuevo
         };
@@ -820,13 +909,14 @@ async function procesarTransferenciaSaliente(body, user, idempotencyHeader = nul
 }
 
 async function procesarTransferenciaEntrante(body, headers = {}) {
-    const transferenciaNormalizada = normalizeIncomingTransferPayload(body, headers, { moneda: 'GTQ' });
+    const transferenciaNormalizada = normalizeStandardIncomingPayload(body);
 
     console.log('[Interbank][INCOMING] payload normalizado', {
         swiftOrigen: transferenciaNormalizada.swiftOrigen,
         swiftDestino: transferenciaNormalizada.swiftDestino,
         cuentaOrigen: transferenciaNormalizada.cuentaOrigen,
         cuentaDestino: transferenciaNormalizada.cuentaDestino,
+        nombreOrigen: transferenciaNormalizada.nombreOrigen,
         monto: transferenciaNormalizada.monto,
         moneda: transferenciaNormalizada.moneda,
         referencia: transferenciaNormalizada.referencia,
@@ -844,7 +934,7 @@ async function procesarTransferenciaEntrante(body, headers = {}) {
 
     console.log(`[Interbank][INCOMING] cuentaDestino normalizada: ${cuentaDestino || '(vacia)'}`);
 
-    const monto = parseAmount(transferenciaNormalizada.monto);
+    const monto = transferenciaNormalizada.monto;
 
     if (!swiftDestino) {
         throw new InterbankError(400, 'swiftDestino es requerido');
@@ -867,7 +957,7 @@ async function procesarTransferenciaEntrante(body, headers = {}) {
         return { duplicate: true, transferencia: existente };
     }
 
-    const referenciaInterna = createReference('SWIFT-IN');
+    const referenciaInterna = idempotencyKey;
     const connection = await db.getConnection();
 
     try {

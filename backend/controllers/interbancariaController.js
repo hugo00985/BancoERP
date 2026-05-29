@@ -226,8 +226,7 @@ async function validarCuenta(req, res) {
 
 async function transferir(req, res) {
     try {
-        const idempotencyKey = getHeader(req, 'idempotency-key');
-        const result = await procesarTransferenciaSaliente(req.body, req.user, idempotencyKey);
+        const result = await procesarTransferenciaSaliente(req.body, req.user);
 
         if (result.duplicate) {
             return res.json({

@@ -140,8 +140,7 @@ const swaggerSpec = swaggerJsdoc({
                         swiftDestino: { type: 'string', example: 'GTB666' },
                         cuentaDestino: { type: 'string', example: '128372706' },
                         monto: { type: 'number', example: 50.00 },
-                        descripcion: { type: 'string', example: 'Pago interbancario' },
-                        idempotencyKey: { type: 'string', example: 'WEB-1779942583076-abc123' }
+                        descripcion: { type: 'string', example: 'Pago interbancario' }
                     }
                 },
                 TransferenciaSalienteResponse: {
@@ -155,7 +154,8 @@ const swaggerSpec = swaggerJsdoc({
                                 duplicate: { type: 'boolean', example: false },
                                 id: { type: 'integer', example: 30 },
                                 estado: { type: 'string', example: 'CONFIRMADA' },
-                                referenciaInterna: { type: 'string', example: 'SWIFT-OUT-1779942583076-EFA8D594' },
+                                referenciaInterna: { type: 'string', example: 'BIGT2026-20260528-143005-A1B2' },
+                                transactionId: { type: 'string', example: 'BIGT2026-20260528-143005-A1B2' },
                                 referenciaExterna: { type: 'string', nullable: true, example: 'EXT-9981' },
                                 saldoNuevo: { type: 'number', example: 89450.00 }
                             }
@@ -164,34 +164,16 @@ const swaggerSpec = swaggerJsdoc({
                 },
                 TransferenciaEntranteEstandar: {
                     type: 'object',
-                    required: ['swiftOrigen', 'swiftDestino', 'cuentaOrigen', 'cuentaDestino', 'monto'],
+                    required: ['TransactionID', 'cuentaOrigen', 'swiftOrigen', 'cuentaDestino', 'swiftDestino', 'NombreOrigen', 'monto'],
                     properties: {
-                        swiftOrigen: { type: 'string', example: 'GTTBXXXX' },
-                        swiftDestino: { type: 'string', example: 'BIGT2026' },
+                        TransactionID: { type: 'string', example: 'GTTBXXXX-20260528-143005-B7C9' },
                         cuentaOrigen: { type: 'string', example: 'TB-10001' },
+                        swiftOrigen: { type: 'string', example: 'GTTBXXXX' },
                         cuentaDestino: { type: 'string', example: 'GT17798309563044741' },
-                        nombreOrigen: { type: 'string', example: 'Maria Lopez' },
+                        swiftDestino: { type: 'string', example: 'BIGT2026' },
+                        NombreOrigen: { type: 'string', example: 'Maria Lopez' },
                         monto: { type: 'number', example: 125.50 },
-                        moneda: { type: 'string', example: 'GTQ' },
-                        referencia: { type: 'string', example: 'EXT-TRX-20260528-001' },
-                        idempotencyKey: { type: 'string', example: 'EXT-TRX-20260528-001' },
                         descripcion: { type: 'string', example: 'Transferencia recibida' }
-                    }
-                },
-                TransferenciaEntranteNovaBank: {
-                    type: 'object',
-                    required: ['TransactionID', 'CuentaOrigen', 'CuentaDestino', 'SwiftOrigen', 'SwiftDestino', 'Monto'],
-                    properties: {
-                        TransactionID: { type: 'string', example: 'NOVA-20260528-0001' },
-                        CuentaOrigen: { type: 'string', example: '128372706' },
-                        CuentaDestino: { type: 'string', example: 'GT17798309563044741' },
-                        SwiftOrigen: { type: 'string', example: 'GTB666' },
-                        SwiftDestino: { type: 'string', example: 'BIGT2026' },
-                        Monto: { type: 'string', example: '50.00' },
-                        Tipo: { type: 'string', example: 'ACH' },
-                        Estado: { type: 'string', example: 'APROBADO' },
-                        Descripcion: { type: 'string', example: 'Pago desde NovaBank' },
-                        NombreOrigen: { type: 'string', example: 'Cliente Nova' }
                     }
                 },
                 TransferenciaEntranteResponse: {
@@ -199,7 +181,7 @@ const swaggerSpec = swaggerJsdoc({
                     properties: {
                         success: { type: 'boolean', example: true },
                         estado: { type: 'string', example: 'CONFIRMADA' },
-                        referenciaInterna: { type: 'string', example: 'SWIFT-IN-1779942583076-EFA8D594' },
+                        referenciaInterna: { type: 'string', example: 'GTTBXXXX-20260528-143005-B7C9' },
                         mensaje: { type: 'string', example: 'Transferencia recibida correctamente' }
                     }
                 },
@@ -216,7 +198,7 @@ const swaggerSpec = swaggerJsdoc({
                         monto: { type: 'string', example: '50.00' },
                         moneda: { type: 'string', example: 'GTQ' },
                         estado: { type: 'string', example: 'CONFIRMADA' },
-                        referenciaInterna: { type: 'string', example: 'SWIFT-OUT-1779942583076-EFA8D594' },
+                        referenciaInterna: { type: 'string', example: 'BIGT2026-20260528-143005-A1B2' },
                         referenciaExterna: { type: 'string', nullable: true, example: 'EXT-9981' },
                         errorMensaje: { type: 'string', nullable: true, example: null }
                     }
@@ -345,16 +327,8 @@ const swaggerSpec = swaggerJsdoc({
                 post: {
                     tags: ['Interbancaria'],
                     summary: 'Crea una transferencia interbancaria saliente',
+                    description: 'El backend genera TransactionID con formato BIGT2026-YYYYMMDD-HHMMSS-XXXX y envia al banco externo el formato estandar acordado. TransactionID tambien se guarda como referencia interna e idempotencyKey.',
                     security: [{ bearerAuth: [] }],
-                    parameters: [
-                        {
-                            in: 'header',
-                            name: 'Idempotency-Key',
-                            required: false,
-                            schema: { type: 'string' },
-                            description: 'Clave opcional para evitar duplicados'
-                        }
-                    ],
                     requestBody: {
                         required: true,
                         content: {
@@ -368,8 +342,7 @@ const swaggerSpec = swaggerJsdoc({
                                             swiftDestino: 'GTB666',
                                             cuentaDestino: '128372706',
                                             monto: 50.00,
-                                            descripcion: 'Pago interbancario',
-                                            idempotencyKey: 'WEB-1779942583076-abc123'
+                                            descripcion: 'Pago interbancario'
                                         }
                                     }
                                 }
@@ -395,46 +368,24 @@ const swaggerSpec = swaggerJsdoc({
                 post: {
                     tags: ['Interbancaria'],
                     summary: 'Endpoint publico para transferencias entrantes de otros bancos',
-                    description: 'Este endpoint no requiere JWT. Puede recibir el formato estandar BancoGT o formatos externos como NovaBank.',
+                    description: 'Este endpoint no requiere JWT. Recibe el formato estandar acordado por los bancos. TransactionID se usa como referencia interna e idempotencyKey; la moneda se asume GTQ.',
                     requestBody: {
                         required: true,
                         content: {
                             'application/json': {
-                                schema: {
-                                    oneOf: [
-                                        { $ref: '#/components/schemas/TransferenciaEntranteEstandar' },
-                                        { $ref: '#/components/schemas/TransferenciaEntranteNovaBank' }
-                                    ]
-                                },
+                                schema: { $ref: '#/components/schemas/TransferenciaEntranteEstandar' },
                                 examples: {
                                     formatoEstandar: {
-                                        summary: 'Transferencia entrante formato estandar',
+                                        summary: 'Formato estandar obligatorio',
                                         value: {
-                                            swiftOrigen: 'GTTBXXXX',
-                                            swiftDestino: 'BIGT2026',
+                                            TransactionID: 'GTTBXXXX-20260528-143005-B7C9',
                                             cuentaOrigen: 'TB-10001',
+                                            swiftOrigen: 'GTTBXXXX',
                                             cuentaDestino: 'GT17798309563044741',
-                                            nombreOrigen: 'Maria Lopez',
+                                            swiftDestino: 'BIGT2026',
+                                            NombreOrigen: 'Maria Lopez',
                                             monto: 125.50,
-                                            moneda: 'GTQ',
-                                            referencia: 'EXT-TRX-20260528-001',
-                                            idempotencyKey: 'EXT-TRX-20260528-001',
                                             descripcion: 'Transferencia recibida'
-                                        }
-                                    },
-                                    formatoNovaBank: {
-                                        summary: 'Transferencia entrante formato NovaBank',
-                                        value: {
-                                            TransactionID: 'NOVA-20260528-0001',
-                                            CuentaOrigen: '128372706',
-                                            CuentaDestino: 'GT17798309563044741',
-                                            SwiftOrigen: 'GTB666',
-                                            SwiftDestino: 'BIGT2026',
-                                            Monto: '50.00',
-                                            Tipo: 'ACH',
-                                            Estado: 'APROBADO',
-                                            Descripcion: 'Pago desde NovaBank',
-                                            NombreOrigen: 'Cliente Nova'
                                         }
                                     }
                                 }
@@ -504,7 +455,7 @@ const swaggerSpec = swaggerJsdoc({
                             name: 'referencia',
                             required: true,
                             schema: { type: 'string' },
-                            example: 'SWIFT-OUT-1779942583076-EFA8D594'
+                            example: 'BIGT2026-20260528-143005-A1B2'
                         }
                     ],
                     responses: {

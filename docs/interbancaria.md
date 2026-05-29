@@ -22,7 +22,7 @@ Variables recomendadas:
 
 ```env
 BANK_NAME=Banco Industrial
-BANK_SWIFT=INDLGTGC
+LOCAL_BANK_SWIFT=BIGT2026
 INTERBANK_REQUEST_TIMEOUT_MS=10000
 INTERBANK_API_KEY=clave-compartida-para-salidas
 INTERBANK_REQUIRE_API_KEY=false
@@ -121,7 +121,6 @@ Headers:
 
 ```http
 Authorization: Bearer JWT
-Idempotency-Key: swift-demo-0001
 Content-Type: application/json
 ```
 
@@ -133,10 +132,12 @@ Request:
   "cuentaDestino": "GT200000001",
   "swiftDestino": "DEMOGTGC",
   "monto": 125.50,
-  "moneda": "GTQ",
   "descripcion": "Pago interbancario"
 }
 ```
+
+El backend genera `TransactionID` con formato `BIGT2026-YYYYMMDD-HHMMSS-XXXX`.
+Ese valor se usa como referencia interna e idempotencyKey, y se envia al banco externo en el formato estandar.
 
 Respuesta confirmada:
 
@@ -148,32 +149,34 @@ Respuesta confirmada:
     "duplicate": false,
     "id": 1,
     "estado": "CONFIRMADA",
-    "referenciaInterna": "SWIFT-OUT-...",
+    "referenciaInterna": "BIGT2026-20260528-143005-A1B2",
+    "transactionId": "BIGT2026-20260528-143005-A1B2",
     "referenciaExterna": "EXT-123",
     "saldoNuevo": 9874.5
   }
 }
 ```
 
-Si se repite el mismo `Idempotency-Key`, responde la transferencia ya registrada.
-
 ### POST /api/interbancaria/entrante
 
 Endpoint para otros bancos. No usa JWT porque lo consumen sistemas externos.
 Puede protegerse con `X-API-Key` si `INTERBANK_REQUIRE_API_KEY=true`.
 
+El request debe usar el formato estandar obligatorio. La moneda se asume `GTQ`.
+`TransactionID` se usa como referencia interna e idempotencyKey.
+
 Request:
 
 ```json
 {
-  "idempotencyKey": "banco-demo-abc-001",
+  "TransactionID": "DEMOGTGC-20260528-143005-B7C9",
   "cuentaOrigen": "GT200000001",
-  "cuentaDestino": "GT100000001",
   "swiftOrigen": "DEMOGTGC",
+  "cuentaDestino": "GT100000001",
+  "swiftDestino": "BIGT2026",
+  "NombreOrigen": "Cliente externo",
   "monto": 125.50,
-  "moneda": "GTQ",
-  "descripcion": "Transferencia recibida",
-  "referenciaExterna": "EXT-123"
+  "descripcion": "Transferencia recibida"
 }
 ```
 
@@ -182,12 +185,14 @@ Respuesta:
 ```json
 {
   "success": true,
-  "message": "Transferencia interbancaria recibida y acreditada",
+  "estado": "CONFIRMADA",
+  "referenciaInterna": "DEMOGTGC-20260528-143005-B7C9",
+  "mensaje": "Transferencia recibida correctamente",
   "transferencia": {
     "duplicate": false,
     "id": 2,
     "estado": "CONFIRMADA",
-    "referenciaInterna": "SWIFT-IN-...",
+    "referenciaInterna": "DEMOGTGC-20260528-143005-B7C9",
     "saldoNuevo": 10125.5
   }
 }
@@ -199,45 +204,24 @@ Si la cuenta destino no existe:
 {
   "success": false,
   "estado": "RECHAZADA",
-  "referenciaInterna": "SWIFT-IN-...",
+  "referenciaInterna": "DEMOGTGC-20260528-143005-B7C9",
   "error": "Cuenta destino local no encontrada"
 }
 ```
 
 ## Formato enviado a otros bancos
 
-Para validacion:
+Para validacion y transferencia se usa el formato estandar acordado:
 
 ```json
 {
-  "numeroCuenta": "GT200000001",
-  "cuenta": "GT200000001",
-  "cuentaDestino": "GT200000001",
-  "swiftDestino": "DEMOGTGC",
-  "bancoDestinoSwift": "DEMOGTGC",
-  "swiftOrigen": "INDLGTGC",
-  "bancoOrigenSwift": "INDLGTGC"
-}
-```
-
-Para transferencia:
-
-```json
-{
-  "idempotencyKey": "swift-demo-0001",
-  "referencia": "SWIFT-OUT-...",
-  "referenciaExterna": "SWIFT-OUT-...",
+  "TransactionID": "BIGT2026-20260528-143005-A1B2",
   "cuentaOrigen": "GT100000001",
-  "numeroCuentaOrigen": "GT100000001",
+  "swiftOrigen": "BIGT2026",
   "cuentaDestino": "GT200000001",
-  "numeroCuentaDestino": "GT200000001",
-  "bancoOrigen": "Banco Industrial",
-  "bancoOrigenSwift": "INDLGTGC",
-  "swiftOrigen": "INDLGTGC",
-  "bancoDestinoSwift": "DEMOGTGC",
   "swiftDestino": "DEMOGTGC",
+  "NombreOrigen": "Cliente Banco Industrial",
   "monto": 125.5,
-  "moneda": "GTQ",
   "descripcion": "Pago interbancario"
 }
 ```

@@ -681,6 +681,10 @@ function loadTransferenciasInterbancarias() {
                         <a href="${publicApiBase}/api/docs" target="_blank" rel="noopener noreferrer">/api/docs</a>
                     </div>
                 </div>
+                <div class="mt-3 small text-muted text-break">
+                    <strong>Formato estandar interbancario:</strong>
+                    <code>TransactionID</code>, <code>cuentaOrigen</code>, <code>swiftOrigen</code>, <code>cuentaDestino</code>, <code>swiftDestino</code>, <code>NombreOrigen</code>, <code>monto</code>, <code>descripcion</code>.
+                </div>
             </div>
         </div>
         <div class="card">
@@ -812,14 +816,12 @@ async function realizarTransferenciaInterbancaria(e) {
         swift: bancoSelect.value,
         nombre: bancoSelect.options[bancoSelect.selectedIndex]?.dataset.nombre || bancoSelect.value
     };
-    const idempotencyKey = `WEB-${Date.now()}-${Math.random().toString(16).slice(2)}`;
     const data = {
         cuentaOrigen: document.getElementById('interCuentaOrigen').value,
         swiftDestino: bancoDestino.swift,
         cuentaDestino: document.getElementById('interCuentaDestino').value.trim(),
         monto: Number(document.getElementById('interMonto').value),
-        descripcion: document.getElementById('interDescripcion').value.trim() || 'Transferencia interbancaria',
-        idempotencyKey
+        descripcion: document.getElementById('interDescripcion').value.trim() || 'Transferencia interbancaria'
     };
 
     if (!data.cuentaOrigen) {
@@ -851,8 +853,7 @@ async function realizarTransferenciaInterbancaria(e) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${authToken}`,
-                'Idempotency-Key': idempotencyKey
+                'Authorization': `Bearer ${authToken}`
             },
             body: JSON.stringify(data)
         });
