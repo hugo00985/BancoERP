@@ -6,7 +6,10 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "db:init": "node scripts/initPostgres.js"
+    "db:init": "node scripts/initPostgres.js",
+    "admin:create": "node scripts/crearAdminRailway.js",
+    "db:auditoria": "node scripts/applyAuditoriaMigration.js",
+    "db:seed:bancos": "node scripts/seedBancosExternosRailway.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

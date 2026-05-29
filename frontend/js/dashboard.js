@@ -1,4 +1,6 @@
-const API_URL = '/api';
+const API_BASE_URL = ['localhost', '127.0.0.1', ''].includes(window.location.hostname)
+    ? ''
+    : 'https://bancoerp-production.up.railway.app';
 let authToken = null;
 let currentUser = null;
 let transaccionesChart = null;
@@ -309,7 +311,7 @@ async function realizarCambioPassword(e) {
     resultadoDiv.innerHTML = '<div class="alert alert-info">⏳ Procesando...</div>';
     
     try {
-        const response = await fetch(`${API_URL}/auth/cambiar-password`, {
+        const response = await fetch(`${API_BASE_URL}/api/auth/cambiar-password`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -348,7 +350,7 @@ async function realizarCambioPassword(e) {
 }
 async function loadDashboard() {
     try {
-        const response = await fetch(`${API_URL}/operaciones/mis-cuentas`, {
+        const response = await fetch(`${API_BASE_URL}/api/operaciones/mis-cuentas`, {
             headers: { 'Authorization': `Bearer ${authToken}` }
         });
         const cuentas = await response.json();
@@ -415,7 +417,7 @@ async function loadDashboard() {
 
 async function loadCuentas() {
     try {
-        const response = await fetch(`${API_URL}/operaciones/mis-cuentas`, {
+        const response = await fetch(`${API_BASE_URL}/api/operaciones/mis-cuentas`, {
             headers: { 'Authorization': `Bearer ${authToken}` }
         });
         const cuentas = await response.json();
@@ -472,7 +474,7 @@ async function vincularCuenta(e) {
     const dpi = document.getElementById('dpiVinculacion').value;
     
     try {
-        const response = await fetch(`${API_URL}/operaciones/vincular-cuenta`, {
+        const response = await fetch(`${API_BASE_URL}/api/operaciones/vincular-cuenta`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
             body: JSON.stringify({ numero_cuenta, dpi })
@@ -546,7 +548,7 @@ async function crearCuentaUsuario(e) {
         monto_apertura: parseFloat(document.getElementById('montoApertura').value)
     };
     try {
-        const response = await fetch(`${API_URL}/operaciones/crear-cuenta-usuario`, {
+        const response = await fetch(`${API_BASE_URL}/api/operaciones/crear-cuenta-usuario`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
             body: JSON.stringify(data)
@@ -601,7 +603,7 @@ function loadTransferencias() {
 
 async function cargarCuentasOrigen() {
     try {
-        const response = await fetch(`${API_URL}/operaciones/mis-cuentas`, {
+        const response = await fetch(`${API_BASE_URL}/api/operaciones/mis-cuentas`, {
             headers: { 'Authorization': `Bearer ${authToken}` }
         });
         const cuentas = await response.json();
@@ -636,7 +638,7 @@ async function realizarTransferencia(e) {
     }
     
     try {
-        const response = await fetch(`${API_URL}/transferencias`, {
+        const response = await fetch(`${API_BASE_URL}/api/transferencias`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
             body: JSON.stringify(data)
@@ -656,21 +658,27 @@ async function realizarTransferencia(e) {
 }
 
 function loadTransferenciasInterbancarias() {
+    const publicApiBase = API_BASE_URL || window.location.origin;
+
     document.getElementById('dashboardContent').innerHTML = `
         <div class="card card-stats mb-3">
             <div class="card-body">
                 <div class="row align-items-center">
-                    <div class="col-md-4 mb-2 mb-md-0">
+                    <div class="col-md-3 mb-2 mb-md-0">
                         <small class="text-muted d-block">Banco</small>
                         <strong>Banco Industrial</strong>
                     </div>
-                    <div class="col-md-4 mb-2 mb-md-0">
+                    <div class="col-md-3 mb-2 mb-md-0">
                         <small class="text-muted d-block">SWIFT</small>
                         <strong>BIGT2026</strong>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3 mb-2 mb-md-0">
                         <small class="text-muted d-block">Endpoint entrante</small>
-                        <code>/api/interbancaria/entrante</code>
+                        <code>${publicApiBase}/api/interbancaria/entrante</code>
+                    </div>
+                    <div class="col-md-3">
+                        <small class="text-muted d-block">Swagger</small>
+                        <a href="${publicApiBase}/api/docs" target="_blank" rel="noopener noreferrer">/api/docs</a>
                     </div>
                 </div>
             </div>
@@ -742,10 +750,10 @@ async function cargarDatosInterbancarios() {
 
     try {
         const [cuentasResponse, bancosResponse] = await Promise.all([
-            fetch(`${API_URL}/operaciones/mis-cuentas`, {
+            fetch(`${API_BASE_URL}/api/operaciones/mis-cuentas`, {
                 headers: { 'Authorization': `Bearer ${authToken}` }
             }),
-            fetch(`${API_URL}/interbancaria/bancos`, {
+            fetch(`${API_BASE_URL}/api/interbancaria/bancos`, {
                 headers: { 'Authorization': `Bearer ${authToken}` }
             })
         ]);
@@ -839,7 +847,7 @@ async function realizarTransferenciaInterbancaria(e) {
     resultadoDiv.innerHTML = '<div class="alert alert-info">Procesando transferencia interbancaria...</div>';
 
     try {
-        const response = await fetch(`${API_URL}/interbancaria/transferir`, {
+        const response = await fetch(`${API_BASE_URL}/api/interbancaria/transferir`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -875,7 +883,7 @@ async function cargarHistorialInterbancario() {
     container.innerHTML = '<div class="alert alert-info mb-0">Cargando historial...</div>';
 
     try {
-        const response = await fetch(`${API_URL}/interbancaria/historial`, {
+        const response = await fetch(`${API_BASE_URL}/api/interbancaria/historial`, {
             headers: { 'Authorization': `Bearer ${authToken}` }
         });
         const data = await response.json();
@@ -1031,7 +1039,7 @@ async function descargarComprobanteInterbancario(referencia, button) {
         }
         if (messageDiv) messageDiv.innerHTML = '';
 
-        const response = await fetch(`${API_URL}/interbancaria/comprobante/${encodeURIComponent(referencia)}`, {
+        const response = await fetch(`${API_BASE_URL}/api/interbancaria/comprobante/${encodeURIComponent(referencia)}`, {
             headers: { 'Authorization': `Bearer ${authToken}` }
         });
 
@@ -1204,7 +1212,7 @@ async function cargarAdminERP() {
 }
 
 async function fetchAdminERP(path) {
-    const response = await fetch(`${API_URL}${path}`, {
+    const response = await fetch(`${API_BASE_URL}/api${path}`, {
         headers: { 'Authorization': `Bearer ${authToken}` }
     });
     const data = await response.json();
@@ -1932,7 +1940,7 @@ function abrirUrlERP(encodedUrl) {
 
 async function loadHistorial() {
     try {
-        const response = await fetch(`${API_URL}/operaciones/mis-cuentas`, {
+        const response = await fetch(`${API_BASE_URL}/api/operaciones/mis-cuentas`, {
             headers: { 'Authorization': `Bearer ${authToken}` }
         });
         const cuentas = await response.json();
@@ -1940,7 +1948,7 @@ async function loadHistorial() {
             document.getElementById('dashboardContent').innerHTML = '<div class="alert alert-info">No tienes cuentas vinculadas</div>';
             return;
         }
-        const historial = await fetch(`${API_URL}/transferencias/cuenta/${cuentas[0].id_cuenta}/historial`, {
+        const historial = await fetch(`${API_BASE_URL}/api/transferencias/cuenta/${cuentas[0].id_cuenta}/historial`, {
             headers: { 'Authorization': `Bearer ${authToken}` }
         });
         const trans = await historial.json();
@@ -1967,7 +1975,7 @@ async function loadHistorial() {
 
 async function loadResumenDia() {
     try {
-        const response = await fetch(`${API_URL}/operaciones/resumen-dia`, {
+        const response = await fetch(`${API_BASE_URL}/api/operaciones/resumen-dia`, {
             headers: { 'Authorization': `Bearer ${authToken}` }
         });
         const data = await response.json();
@@ -2159,7 +2167,7 @@ window.buscarCuenta = async function() {
     if (!valor) return;
     
     try {
-        const response = await fetch(`${API_URL}/cuentas/buscar/${encodeURIComponent(valor)}`, {
+        const response = await fetch(`${API_BASE_URL}/api/cuentas/buscar/${encodeURIComponent(valor)}`, {
             headers: { 'Authorization': `Bearer ${authToken}` }
         });
         const cuenta = await response.json();
@@ -2193,7 +2201,7 @@ window.buscarCuenta = async function() {
 
 window.verEstadoCuenta = async function(numeroCuenta) {
     try {
-        const response = await fetch(`${API_URL}/cuentas/estado/${numeroCuenta}`, {
+        const response = await fetch(`${API_BASE_URL}/api/cuentas/estado/${numeroCuenta}`, {
             headers: { 'Authorization': `Bearer ${authToken}` }
         });
         const data = await response.json();
@@ -2289,7 +2297,7 @@ async function realizarDeposito(e) {
         referencia: document.getElementById('depositoReferencia').value
     };
     try {
-        const response = await fetch(`${API_URL}/operaciones/deposito`, {
+        const response = await fetch(`${API_BASE_URL}/api/operaciones/deposito`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
             body: JSON.stringify(data)
@@ -2342,7 +2350,7 @@ async function realizarRetiro(e) {
         referencia: document.getElementById('retiroReferencia').value
     };
     try {
-        const response = await fetch(`${API_URL}/operaciones/retiro`, {
+        const response = await fetch(`${API_BASE_URL}/api/operaciones/retiro`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
             body: JSON.stringify(data)
@@ -2401,7 +2409,7 @@ async function realizarTransferenciaAsistida(e) {
         descripcion: 'Transferencia realizada por cajero'
     };
     try {
-        const response = await fetch(`${API_URL}/transferencias`, {
+        const response = await fetch(`${API_BASE_URL}/api/transferencias`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
             body: JSON.stringify(data)
@@ -2507,7 +2515,7 @@ async function buscarClientePorDpi() {
     if (!dpi || dpi.length < 8) return;
     
     try {
-        const response = await fetch(`${API_URL}/cuentas/cliente/buscar/${dpi}`, {
+        const response = await fetch(`${API_BASE_URL}/api/cuentas/cliente/buscar/${dpi}`, {
             headers: { 'Authorization': `Bearer ${authToken}` }
         });
         const cliente = await response.json();
@@ -2547,7 +2555,7 @@ async function realizarAperturaCuenta(e) {
     }
     
     try {
-        const response = await fetch(`${API_URL}/operaciones/apertura-cuenta`, {
+        const response = await fetch(`${API_BASE_URL}/api/operaciones/apertura-cuenta`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
             body: JSON.stringify(data)
@@ -2597,7 +2605,7 @@ async function realizarAperturaCuenta(e) {
 
 window.verMovimientos = async function(idCuenta) {
     try {
-        const response = await fetch(`${API_URL}/cuentas/${idCuenta}/movimientos`, {
+        const response = await fetch(`${API_BASE_URL}/api/cuentas/${idCuenta}/movimientos`, {
             headers: { 'Authorization': `Bearer ${authToken}` }
         });
         const movimientos = await response.json();

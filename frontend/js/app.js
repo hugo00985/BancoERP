@@ -1,4 +1,6 @@
-const API_URL = '/api';
+const API_BASE_URL = ['localhost', '127.0.0.1', ''].includes(window.location.hostname)
+    ? ''
+    : 'https://bancoerp-production.up.railway.app';
 
 document.addEventListener('DOMContentLoaded', function() {
     console.log('✅ App iniciada correctamente');
@@ -44,7 +46,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             try {
-                const response = await fetch(`${API_URL}/auth/login`, {
+                const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json'
@@ -123,7 +125,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             try {
-                const response = await fetch(`${API_URL}/auth/register`, {
+                const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json'
@@ -229,7 +231,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (forgotPasswordResult) forgotPasswordResult.innerHTML = '<div class="alert alert-info">⏳ Procesando...</div>';
             
             try {
-                const response = await fetch(`${API_URL}/auth/cambiar-password`, {
+                const response = await fetch(`${API_BASE_URL}/api/auth/cambiar-password`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({

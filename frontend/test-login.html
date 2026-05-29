@@ -18,6 +18,10 @@
     <div id="resultado"></div>
 
     <script>
+        const API_BASE_URL = ['localhost', '127.0.0.1', ''].includes(window.location.hostname)
+            ? ''
+            : 'https://bancoerp-production.up.railway.app';
+
         async function login() {
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
@@ -26,7 +30,7 @@
             resultado.innerHTML = 'Cargando...';
             
             try {
-                const response = await fetch('/api/auth/login', {
+                const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username, password, accessType: 'cajero' })
