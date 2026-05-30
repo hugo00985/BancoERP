@@ -36,6 +36,21 @@ function getSoapServiceUrl() {
     return `${getPublicBaseUrl()}${SOAP_PATH}`;
 }
 
+function isWsdlRequest(req) {
+    return Object.prototype.hasOwnProperty.call(req.query || {}, 'wsdl')
+        || /\?wsdl(?:$|[=&])/i.test(req.originalUrl || req.url || '');
+}
+
+function serveWsdl(wsdl) {
+    return (req, res, next) => {
+        if (!isWsdlRequest(req)) {
+            return next();
+        }
+
+        return res.status(200).type('application/xml').send(wsdl);
+    };
+}
+
 function escapeXml(value) {
     return String(value || '')
         .replace(/&/g, '&amp;')
@@ -399,6 +414,11 @@ function createSoapServices() {
 function setupSoapWebService(app) {
     const serviceUrl = getSoapServiceUrl();
     const wsdl = buildWsdl(serviceUrl);
+    const wsdlHandler = serveWsdl(wsdl);
+
+    app.get(SOAP_PATH, wsdlHandler);
+    app.get(`${SOAP_PATH}/`, wsdlHandler);
+
     const server = soap.listen(app, SOAP_PATH, createSoapServices(), wsdl, (error) => {
         if (error) {
             console.error('[SOAP] error iniciando servicio:', error.message);

@@ -25,6 +25,8 @@ const telegramRoutes = require('./routes/telegramRoutes');
 const interbancariaRoutes = require('./routes/interbancariaRoutes');
 
 const app = express();
+const frontendPath = path.join(__dirname, '../frontend');
+const frontendIndexPath = path.join(frontendPath, 'index.html');
 
 // Middlewares
 app.set('trust proxy', 1);
@@ -76,7 +78,7 @@ app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || '1mb' }));
 app.use(morgan('dev'));
 setupSwagger(app);
 setupSoapWebService(app);
-app.use(express.static(path.join(__dirname, '../frontend')));
+app.use(express.static(frontendPath));
 
 // Conectar MongoDB e inicializar Telegram
 (async () => {
@@ -97,6 +99,10 @@ app.use('/api/interbancaria', interbancariaRoutes);
 // Ruta de salud
 app.get('/api/health', (req, res) => {
     res.json({ status: 'OK', timestamp: new Date() });
+});
+
+app.use('/api', (req, res) => {
+    res.status(404).json({ error: 'Ruta API no encontrada' });
 });
 
 app.use((error, req, res, next) => {
@@ -134,7 +140,17 @@ app.use((error, req, res, next) => {
 
 // Redirigir al index.html del frontend
 app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend/index.html'));
+    res.sendFile(frontendIndexPath, (error) => {
+        if (!error) {
+            return;
+        }
+
+        console.warn('[Frontend] index.html no disponible en este despliegue:', frontendIndexPath);
+
+        if (!res.headersSent) {
+            res.status(404).json({ error: 'Frontend no disponible en este despliegue' });
+        }
+    });
 });
 
 const PORT = process.env.PORT || 3000;
