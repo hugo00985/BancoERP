@@ -234,6 +234,26 @@ function buildExternalAuthHeaders(bancoExterno) {
     };
 }
 
+function normalizeEndpointUrlForCompare(value) {
+    return String(value || '').trim().replace(/\/+$/, '');
+}
+
+function bankValidationAndTransferEndpointsAreEqual(bancoExterno) {
+    if (!bancoExterno?.endpointValidacion || !bancoExterno?.endpointTransferencia) {
+        return false;
+    }
+
+    try {
+        const validationUrl = buildEndpointUrl(bancoExterno.baseUrl, bancoExterno.endpointValidacion);
+        const transferUrl = buildEndpointUrl(bancoExterno.baseUrl, bancoExterno.endpointTransferencia);
+
+        return normalizeEndpointUrlForCompare(validationUrl) === normalizeEndpointUrlForCompare(transferUrl);
+    } catch (error) {
+        return normalizeEndpointUrlForCompare(bancoExterno.endpointValidacion)
+            === normalizeEndpointUrlForCompare(bancoExterno.endpointTransferencia);
+    }
+}
+
 function redactHeaders(headers) {
     const redacted = { ...headers };
 
@@ -528,6 +548,7 @@ async function enviarTransferenciaExterna(banco, transferencia) {
     const authEnabled = Boolean(extraHeaders.Authorization);
 
     console.log(`[Interbank][${adapter.swift}][TRANSFER] auth externo: ${authEnabled ? 'enabled' : 'disabled'}`);
+    console.log(`[Interbank][${adapter.swift}][TRANSFER_ONLY] envio unico`);
 
     const response = await requestJson(url, payload, {
         idempotencyKey: transferencia.idempotencyKey,
@@ -748,23 +769,11 @@ async function procesarTransferenciaSaliente(body, user) {
 
     const transferenciaId = transferenciaInicial.id;
 
-    const validacion = await validarCuentaExterna(bancoDestino, standardTransfer);
-    if (!validacion.valid) {
-        await actualizarTransferencia(transferenciaId, {
-            estado: 'RECHAZADA',
-            request_payload: createJsonLog({
-                original: body,
-                interno: standardTransfer,
-                estandar: standardPayload,
-                validacion: validacion.requestPayload
-            }),
-            response_payload: createJsonLog({
-                validacion: validacion.responsePayload
-            }),
-            error_mensaje: 'La cuenta destino no fue validada por el banco externo'
+    if (bankValidationAndTransferEndpointsAreEqual(bancoDestino)) {
+        console.log(`[Interbank][${bancoDestino.swift}][SKIP_VALIDATE] endpointValidacion igual a endpointTransferencia`, {
+            endpointValidacion: bancoDestino.endpointValidacion,
+            endpointTransferencia: bancoDestino.endpointTransferencia
         });
-
-        throw new InterbankError(400, 'Cuenta destino rechazada por banco externo', validacion.data);
     }
 
     const respuestaExterna = await enviarTransferenciaExterna(bancoDestino, {
@@ -787,11 +796,9 @@ async function procesarTransferenciaSaliente(body, user) {
                 original: body,
                 interno: standardTransfer,
                 estandar: standardPayload,
-                validacion: validacion.requestPayload,
                 transferencia: respuestaExterna.requestPayload
             }),
             response_payload: createJsonLog({
-                validacion: validacion.responsePayload,
                 transferencia: respuestaExterna.responsePayload
             }),
             error_mensaje: 'El banco externo no confirmo la transferencia'
@@ -856,11 +863,9 @@ async function procesarTransferenciaSaliente(body, user) {
                     original: body,
                     interno: standardTransfer,
                     estandar: standardPayload,
-                    validacion: validacion.requestPayload,
                     transferencia: respuestaExterna.requestPayload
                 }),
                 createJsonLog({
-                    validacion: validacion.responsePayload,
                     transferencia: respuestaExterna.responsePayload
                 }),
                 transferenciaId
