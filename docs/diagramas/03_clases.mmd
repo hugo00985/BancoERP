@@ -1,0 +1,176 @@
+classDiagram
+    class Usuario {
+        +int id_usuario
+        +string nombre_usuario
+        +string correo
+        +string password_hash
+        +string dpi
+        +string codigo_empleado
+        +boolean estado
+        +datetime ultimo_acceso
+    }
+
+    class Rol {
+        +int id_rol
+        +string nombre
+    }
+
+    class Cliente {
+        +int id_cliente
+        +string nombre
+        +string apellido
+        +string dpi
+        +string nit
+        +string telefono
+        +string correo
+        +string direccion
+        +boolean estado
+    }
+
+    class Cuenta {
+        +int id_cuenta
+        +string numero_cuenta
+        +decimal saldo
+        +date fecha_apertura
+        +string estado
+    }
+
+    class TransferenciaInterna {
+        +int id_transferencia
+        +decimal monto
+        +datetime fecha_transferencia
+        +string referencia
+        +string descripcion
+    }
+
+    class Movimiento {
+        +int id_movimiento
+        +decimal monto
+        +decimal saldo_anterior
+        +decimal saldo_nuevo
+        +datetime fecha_movimiento
+        +string tipo_operacion
+    }
+
+    class TransferenciaInterbancaria {
+        +int id_transferencia_interbancaria
+        +string tipo
+        +string banco_origen_swift
+        +string banco_destino_swift
+        +decimal monto
+        +string moneda
+        +string estado
+        +string referencia_interna
+        +string referencia_externa
+        +string idempotency_key
+    }
+
+    class BancoExterno {
+        +int id_banco_externo
+        +string nombre
+        +string swift
+        +string base_url
+        +string endpoint_validacion
+        +string endpoint_transferencia
+        +boolean activo
+    }
+
+    class AuditoriaEvento {
+        +bigint id
+        +int id_usuario
+        +string username
+        +string rol
+        +string accion
+        +string modulo
+        +string estado
+        +json metadata
+        +datetime fecha
+    }
+
+    class NotificacionTelegram {
+        +string collection
+        +int id_usuario
+        +string username
+        +string chat_id
+        +string tipo
+        +string mensaje
+        +boolean enviado
+        +string error
+        +datetime fecha
+    }
+
+    class Beneficiario {
+        <<conceptual>>
+        +string cuenta_destino
+        +string nombre_destino
+        +string banco_destino_swift
+    }
+
+    class AuthController {
+        +login()
+        +register()
+        +getProfile()
+        +cambiarPassword()
+    }
+
+    class TransferenciaController {
+        +realizarTransferencia()
+        +getHistorialTransferencias()
+    }
+
+    class InterbancariaController {
+        +listarBancos()
+        +validarCuenta()
+        +transferir()
+        +entrante()
+        +historial()
+        +comprobante()
+    }
+
+    class AdminController {
+        +getResumenERP()
+        +listarCuentasERP()
+        +listarInterbancariasERP()
+        +listarBancosExternosERP()
+        +listarAuditoriaERP()
+    }
+
+    class InterbancariaService {
+        +procesarTransferenciaSaliente()
+        +procesarTransferenciaEntrante()
+        +validarCuentaExterna()
+        +listarHistorialInterbancario()
+    }
+
+    class TelegramService {
+        +enviarNotificacion()
+        +notificarTransferencia()
+        +notificarInterbancaria()
+        +enviarNotificacionPrueba()
+    }
+
+    class AuditoriaService {
+        +registrarEventoAuditoria()
+        +listarEventosAuditoria()
+        +obtenerResumenAuditoria()
+    }
+
+    Rol "1" --> "many" Usuario
+    Usuario "0..1" --> "0..1" Cliente
+    Cliente "1" --> "many" Cuenta
+    Cuenta "1" --> "many" Movimiento
+    Cuenta "1" --> "many" TransferenciaInterna : origen/destino
+    Cuenta "1" --> "many" TransferenciaInterbancaria : origen/destino
+    BancoExterno "1" --> "many" TransferenciaInterbancaria
+    Usuario "1" --> "many" AuditoriaEvento
+    Usuario "1" --> "many" NotificacionTelegram
+    Beneficiario ..> Cuenta : cuenta_destino
+    Beneficiario ..> BancoExterno : banco_destino_swift
+
+    AuthController --> Usuario
+    TransferenciaController --> TransferenciaInterna
+    InterbancariaController --> InterbancariaService
+    AdminController --> AuditoriaService
+    InterbancariaService --> BancoExterno
+    InterbancariaService --> TransferenciaInterbancaria
+    TelegramService --> NotificacionTelegram

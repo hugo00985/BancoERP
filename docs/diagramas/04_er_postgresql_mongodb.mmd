@@ -1,0 +1,209 @@
+erDiagram
+    ROL ||--o{ USUARIO : asigna
+    USUARIO ||--o| CLIENTE : vincula
+    CLIENTE ||--o{ CUENTA : posee
+    BANCO ||--o{ CUENTA : emite
+    TIPO_CUENTA ||--o{ CUENTA : clasifica
+    MONEDA ||--o{ CUENTA : denomina
+
+    CUENTA ||--o{ TRANSFERENCIA : cuenta_origen
+    CUENTA ||--o{ TRANSFERENCIA : cuenta_destino
+    ESTADO_TRANSFERENCIA ||--o{ TRANSFERENCIA : estado
+    USUARIO ||--o{ TRANSFERENCIA : cajero
+
+    CUENTA ||--o{ MOVIMIENTO : registra
+    TIPO_MOVIMIENTO ||--o{ MOVIMIENTO : tipo
+    TRANSFERENCIA ||--o{ MOVIMIENTO : genera
+    USUARIO ||--o{ MOVIMIENTO : cajero
+
+    BANCO_EXTERNO ||--o{ API_KEYS_BANCOS : autentica
+    CUENTA ||--o{ TRANSFERENCIAS_INTERBANCARIAS : cuenta_origen
+    CUENTA ||--o{ TRANSFERENCIAS_INTERBANCARIAS : cuenta_destino
+    MOVIMIENTO ||--o| TRANSFERENCIAS_INTERBANCARIAS : movimiento
+    USUARIO ||--o{ AUDITORIA_EVENTOS : registra
+
+    USUARIO ||--o{ USUARIOS_TELEGRAM : referencia_no_relacional
+    USUARIOS_TELEGRAM ||--o{ NOTIFICACIONES_TELEGRAM : genera
+    USUARIOS_TELEGRAM ||--o{ LOGS_TELEGRAM : registra
+
+    ROL {
+        int id_rol PK
+        varchar nombre UK
+    }
+
+    USUARIO {
+        int id_usuario PK
+        varchar nombre_usuario UK
+        varchar correo UK
+        varchar password_hash
+        int id_rol FK
+        varchar dpi
+        varchar codigo_empleado UK
+        int id_cliente FK
+        int intentos_fallidos
+        timestamp ultimo_acceso
+        boolean estado
+        timestamp fecha_creacion
+    }
+
+    CLIENTE {
+        int id_cliente PK
+        varchar nombre
+        varchar apellido
+        varchar dpi UK
+        varchar nit
+        date fecha_nacimiento
+        varchar telefono
+        varchar correo
+        text direccion
+        int id_usuario FK
+        boolean estado
+        timestamp fecha_registro
+    }
+
+    CUENTA {
+        int id_cuenta PK
+        varchar numero_cuenta UK
+        int id_cliente FK
+        int id_banco FK
+        int id_tipo_cuenta FK
+        int id_moneda FK
+        numeric saldo
+        date fecha_apertura
+        varchar estado
+    }
+
+    TRANSFERENCIA {
+        int id_transferencia PK
+        int id_cuenta_origen FK
+        int id_cuenta_destino FK
+        numeric monto
+        timestamp fecha_transferencia
+        varchar referencia
+        text descripcion
+        int id_estado_transferencia FK
+        int id_cajero FK
+    }
+
+    MOVIMIENTO {
+        int id_movimiento PK
+        int id_cuenta FK
+        int id_tipo_movimiento FK
+        numeric monto
+        numeric saldo_anterior
+        numeric saldo_nuevo
+        timestamp fecha_movimiento
+        text descripcion
+        int id_transferencia FK
+        int id_cajero FK
+        varchar tipo_operacion
+    }
+
+    BANCO_EXTERNO {
+        int id_banco_externo PK
+        varchar nombre
+        varchar swift UK
+        varchar base_url
+        varchar endpoint_validacion
+        varchar endpoint_transferencia
+        boolean activo
+    }
+
+    TRANSFERENCIAS_INTERBANCARIAS {
+        int id_transferencia_interbancaria PK
+        varchar tipo
+        int id_cuenta_origen FK
+        varchar numero_cuenta_origen
+        int id_cuenta_destino FK
+        varchar numero_cuenta_destino
+        varchar banco_origen_swift
+        varchar banco_destino_swift
+        varchar banco_destino_nombre
+        numeric monto
+        char moneda
+        varchar estado
+        varchar referencia_interna UK
+        varchar referencia_externa
+        varchar idempotency_key
+        int id_movimiento FK
+        text request_payload
+        text response_payload
+        text error_mensaje
+        timestamp fecha_creacion
+    }
+
+    AUDITORIA_EVENTOS {
+        bigint id PK
+        int id_usuario FK
+        varchar username
+        varchar rol
+        varchar accion
+        varchar modulo
+        text descripcion
+        varchar ip
+        text user_agent
+        varchar estado
+        jsonb metadata
+        timestamp fecha
+    }
+
+    API_KEYS_BANCOS {
+        int id_api_key PK
+        int id_banco_externo FK
+        varchar nombre
+        char api_key_hash UK
+        boolean activo
+    }
+
+    BANCO {
+        int id_banco PK
+        varchar nombre_banco
+    }
+
+    TIPO_CUENTA {
+        int id_tipo_cuenta PK
+        varchar nombre_tipo
+    }
+
+    MONEDA {
+        int id_moneda PK
+        char codigo UK
+        varchar nombre
+    }
+
+    TIPO_MOVIMIENTO {
+        int id_tipo_movimiento PK
+        varchar nombre_tipo
+        char signo
+    }
+
+    ESTADO_TRANSFERENCIA {
+        int id_estado_transferencia PK
+        varchar nombre
+    }
+
+    USUARIOS_TELEGRAM {
+        object_id _id PK
+        int id_usuario
+        string username
+        string chat_id
+        boolean activo
+        datetime fecha_vinculacion
+    }
+
+    NOTIFICACIONES_TELEGRAM {
+        object_id _id PK
+        int id_usuario
+        string tipo
+        string mensaje
+        boolean enviado
+        string error
+        datetime fecha
+    }
+
+    LOGS_TELEGRAM {
+        object_id _id PK
+        string evento
+        datetime fecha
+        json metadata
+    }

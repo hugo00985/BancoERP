@@ -1,0 +1,69 @@
+flowchart LR
+    Cliente["Actor: Cliente / Usuario"]
+    Admin["Actor: Administrador"]
+    Cajero["Actor: Cajero / Gerente"]
+    Sistema["Actor: Sistema Bancario"]
+    Externo["Actor: Servicio Interbancario Externo"]
+    Telegram["Actor: Telegram"]
+
+    subgraph Casos["Casos de uso ERP bancario"]
+        UC1(("Iniciar sesion"))
+        UC2(("Consultar saldo y cuentas"))
+        UC3(("Ver movimientos"))
+        UC4(("Realizar transferencia interna"))
+        UC5(("Realizar transferencia interbancaria"))
+        UC6(("Descargar comprobante PDF"))
+        UC7(("Vincular Telegram"))
+        UC8(("Recibir notificaciones"))
+        UC9(("Administrar usuarios"))
+        UC10(("Administrar cuentas"))
+        UC11(("Ver resumen ERP"))
+        UC12(("Revisar auditoria"))
+        UC13(("Administrar bancos externos"))
+        UC14(("Recibir transferencia interbancaria entrante"))
+        UC15(("Validar JWT y roles"))
+        UC16(("Registrar auditoria"))
+    end
+
+    Cliente --> UC1
+    Cliente --> UC2
+    Cliente --> UC3
+    Cliente --> UC4
+    Cliente --> UC5
+    Cliente --> UC6
+    Cliente --> UC7
+    Cliente --> UC8
+
+    Admin --> UC1
+    Admin --> UC9
+    Admin --> UC10
+    Admin --> UC11
+    Admin --> UC12
+    Admin --> UC13
+
+    Cajero --> UC1
+    Cajero --> UC10
+    Cajero --> UC11
+    Cajero --> UC3
+
+    Externo --> UC14
+    Sistema --> UC15
+    Sistema --> UC16
+    Sistema --> UC8
+    Telegram --> UC8
+
+    UC1 --> UC15
+    UC2 --> UC15
+    UC3 --> UC15
+    UC4 --> UC15
+    UC5 --> UC15
+    UC9 --> UC15
+    UC10 --> UC15
+    UC11 --> UC15
+    UC12 --> UC15
+
+    UC4 --> UC16
+    UC5 --> UC16
+    UC14 --> UC16
+    UC7 --> UC16
+    UC12 --> UC16

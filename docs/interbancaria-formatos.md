@@ -90,16 +90,19 @@ Reglas de entrada:
 - Si la cuenta destino local existe, se acredita el saldo y se registra movimiento.
 - Si Telegram esta vinculado, se notifica sin interrumpir la transferencia si falla.
 
-Respuesta confirmada:
+Respuesta publica confirmada:
 
-```json
-{
-  "success": true,
-  "estado": "CONFIRMADA",
-  "referenciaInterna": "GTTBXXXX-20260528-143005-B7C9",
-  "mensaje": "Transferencia recibida correctamente"
-}
+```text
+APROBADO
 ```
+
+Si la cuenta destino no existe o la transferencia queda rechazada, la respuesta publica es:
+
+```text
+RECHAZADO
+```
+
+El detalle completo se conserva internamente en `transferencias_interbancarias`, auditoria y logs.
 
 ## Bancos configurados
 

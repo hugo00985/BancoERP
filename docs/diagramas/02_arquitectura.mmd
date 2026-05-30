@@ -1,0 +1,33 @@
+flowchart LR
+    U["Usuario / Navegador"] -->|"HTTPS"| F["Frontend Hostinger<br/>HTML, CSS, JS Dashboard"]
+
+    F -->|"HTTPS REST + Bearer JWT"| API["Backend API Railway<br/>Node.js + Express"]
+
+    API -->|"pg Pool / DATABASE_URL"| PG[("PostgreSQL Railway<br/>bancogt_db")]
+    API -->|"MongoDB Driver / MONGODB_URI"| MDB[("MongoDB Atlas<br/>banco_notificaciones")]
+
+    API -->|"HTTPS REST<br/>Formato interbancario estandar"| BEXT["Bancos externos SWIFT"]
+    BEXT -->|"POST /api/interbancaria/entrante"| API
+
+    API -->|"Telegram Bot API"| TG["Telegram"]
+
+    subgraph MODS["Modulos backend reales"]
+        AUTH["authRoutes / authController<br/>Login, registro, JWT"]
+        OPS["operacionesRoutes<br/>Cuentas, depositos, retiros"]
+        TR["transferenciaRoutes<br/>Transferencias internas"]
+        IB["interbancariaRoutes<br/>SWIFT interbancaria"]
+        ADM["adminRoutes<br/>ERP y auditoria"]
+        TEL["telegramRoutes<br/>Vinculacion Telegram"]
+        DOCS["Swagger /api/docs"]
+    end
+
+    API --- AUTH
+    API --- OPS
+    API --- TR
+    API --- IB
+    API --- ADM
+    API --- TEL
+    API --- DOCS
+
+    PG --- SQL1["usuario, cliente, cuenta, transferencia, movimiento,<br/>bancos_externos, transferencias_interbancarias, auditoria_eventos"]
+    MDB --- NOSQL1["usuarios_telegram,<br/>notificaciones_telegram,<br/>logs_telegram"]

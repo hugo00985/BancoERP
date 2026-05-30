@@ -177,13 +177,10 @@ const swaggerSpec = swaggerJsdoc({
                     }
                 },
                 TransferenciaEntranteResponse: {
-                    type: 'object',
-                    properties: {
-                        success: { type: 'boolean', example: true },
-                        estado: { type: 'string', example: 'CONFIRMADA' },
-                        referenciaInterna: { type: 'string', example: 'GTTBXXXX-20260528-143005-B7C9' },
-                        mensaje: { type: 'string', example: 'Transferencia recibida correctamente' }
-                    }
+                    type: 'string',
+                    enum: ['APROBADO', 'RECHAZADO'],
+                    example: 'APROBADO',
+                    description: 'Respuesta publica text/plain para bancos externos. APROBADO equivale a CONFIRMADA y RECHAZADO equivale a RECHAZADA.'
                 },
                 HistorialInterbancarioItem: {
                     type: 'object',
@@ -393,17 +390,26 @@ const swaggerSpec = swaggerJsdoc({
                         }
                     },
                     responses: {
-                        201: {
-                            description: 'Transferencia recibida',
+                        200: {
+                            description: 'Resultado publico estandar en texto plano. APROBADO si la transferencia quedo CONFIRMADA; RECHAZADO si quedo RECHAZADA.',
                             content: {
-                                'application/json': {
-                                    schema: { $ref: '#/components/schemas/TransferenciaEntranteResponse' }
+                                'text/plain': {
+                                    schema: { $ref: '#/components/schemas/TransferenciaEntranteResponse' },
+                                    examples: {
+                                        aprobada: {
+                                            summary: 'Transferencia confirmada',
+                                            value: 'APROBADO'
+                                        },
+                                        rechazada: {
+                                            summary: 'Transferencia rechazada',
+                                            value: 'RECHAZADO'
+                                        }
+                                    }
                                 }
                             }
                         },
                         400: { description: 'Payload invalido o swiftDestino incorrecto' },
-                        401: { description: 'API key interbancaria invalida si se exige' },
-                        404: { description: 'Cuenta destino local no encontrada' }
+                        401: { description: 'API key interbancaria invalida si se exige' }
                     }
                 }
             },

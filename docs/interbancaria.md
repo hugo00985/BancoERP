@@ -180,34 +180,19 @@ Request:
 }
 ```
 
-Respuesta:
+Respuesta publica:
 
-```json
-{
-  "success": true,
-  "estado": "CONFIRMADA",
-  "referenciaInterna": "DEMOGTGC-20260528-143005-B7C9",
-  "mensaje": "Transferencia recibida correctamente",
-  "transferencia": {
-    "duplicate": false,
-    "id": 2,
-    "estado": "CONFIRMADA",
-    "referenciaInterna": "DEMOGTGC-20260528-143005-B7C9",
-    "saldoNuevo": 10125.5
-  }
-}
+```text
+APROBADO
 ```
 
 Si la cuenta destino no existe:
 
-```json
-{
-  "success": false,
-  "estado": "RECHAZADA",
-  "referenciaInterna": "DEMOGTGC-20260528-143005-B7C9",
-  "error": "Cuenta destino local no encontrada"
-}
+```text
+RECHAZADO
 ```
+
+Internamente se sigue guardando el resultado completo en PostgreSQL, auditoria y logs.
 
 ## Formato enviado a otros bancos
 

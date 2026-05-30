@@ -57,6 +57,19 @@ function formatDate(value) {
     });
 }
 
+function sendPlainInterbankResult(res, estado, context = {}) {
+    const normalizedEstado = String(estado || '').trim().toUpperCase();
+    const body = normalizedEstado === 'CONFIRMADA' ? 'APROBADO' : 'RECHAZADO';
+
+    console.log('[Interbank][INCOMING] respuesta publica', {
+        estado: normalizedEstado || null,
+        body,
+        ...context
+    });
+
+    return res.status(200).type('text/plain').send(body);
+}
+
 function drawField(doc, label, value, x, y, width = 230) {
     doc.fontSize(8).fillColor('#6c757d').font('Helvetica-Bold').text(label, x, y, { width });
     doc.fontSize(10).fillColor('#1f2933').font('Helvetica').text(String(value || '-'), x, y + 13, { width });
@@ -295,21 +308,20 @@ async function entrante(req, res) {
         const result = await procesarTransferenciaEntrante(req.body, req.headers);
 
         if (result.duplicate) {
+            const estadoDuplicado = result.transferencia?.estado || 'CONFIRMADA';
+
             await registrarEventoAuditoria({
                 req,
                 accion: 'TRANSFERENCIA_INTERBANCARIA_ENTRANTE',
                 modulo: 'INTERBANCARIA',
                 descripcion: 'Transferencia interbancaria entrante duplicada',
                 estado: 'OK',
-                metadata: { body: req.body, transferencia: result.transferencia }
+                metadata: { body: req.body, transferencia: result.transferencia, respuestaPublica: estadoDuplicado }
             });
-            return res.json({
-                success: true,
+
+            return sendPlainInterbankResult(res, estadoDuplicado, {
                 duplicate: true,
-                estado: result.transferencia?.estado || 'CONFIRMADA',
-                referenciaInterna: result.transferencia?.referencia_interna || null,
-                mensaje: 'Transferencia entrante ya procesada',
-                transferencia: result.transferencia
+                referenciaInterna: result.transferencia?.referencia_interna || null
             });
         }
 
@@ -320,11 +332,11 @@ async function entrante(req, res) {
                 modulo: 'INTERBANCARIA',
                 descripcion: 'Transferencia interbancaria entrante rechazada',
                 estado: 'RECHAZADA',
-                metadata: { body: req.body, result }
+                metadata: { body: req.body, result, respuestaPublica: 'RECHAZADO' }
             });
-            return res.status(404).json({
-                success: false,
-                estado: result.estado,
+
+            return sendPlainInterbankResult(res, result.estado || 'RECHAZADA', {
+                rejected: true,
                 referenciaInterna: result.referenciaInterna,
                 error: result.error
             });
@@ -340,16 +352,14 @@ async function entrante(req, res) {
                 body: req.body,
                 id: result.id,
                 referenciaInterna: result.referenciaInterna,
-                saldoNuevo: result.saldoNuevo
+                saldoNuevo: result.saldoNuevo,
+                respuestaPublica: 'APROBADO'
             }
         });
 
-        res.status(201).json({
-            success: true,
-            estado: result.estado,
+        return sendPlainInterbankResult(res, result.estado || 'CONFIRMADA', {
             referenciaInterna: result.referenciaInterna,
-            mensaje: result.mensaje || 'Transferencia recibida correctamente',
-            transferencia: result
+            id: result.id
         });
     } catch (error) {
         await registrarEventoAuditoria({

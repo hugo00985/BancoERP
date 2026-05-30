@@ -1,0 +1,61 @@
+flowchart TD
+    A["Usuario abre navegador"] --> B["Frontend en Hostinger"]
+    B --> C["Pantalla de login"]
+    C --> D["POST /api/auth/login"]
+    D --> E["Backend API Railway"]
+
+    E --> F{"Credenciales validas?"}
+    F -- "No" --> F1["401/403: credenciales invalidas o acceso denegado"]
+    F1 --> F2["Frontend muestra mensaje de error"]
+
+    F -- "Si" --> G["Generar JWT"]
+    G --> H["Registrar auditoria: LOGIN_EXITOSO"]
+    H --> I["Frontend guarda token"]
+    I --> J["Dashboard bancario ERP"]
+
+    J --> K{"Operacion solicitada"}
+
+    K --> L["Consultar cuentas"]
+    L --> L1["GET /api/operaciones/mis-cuentas"]
+    L1 --> Z["Middleware authenticateToken"]
+    Z --> L2["Consulta PostgreSQL: cuenta, cliente, banco, moneda"]
+    L2 --> L3["Respuesta JSON con cuentas"]
+
+    K --> M["Transferencia interna"]
+    M --> M1["POST /api/transferencias"]
+    M1 --> Z
+    Z --> M2["Validar cuenta origen, cuenta destino y saldo"]
+    M2 --> M3{"Datos validos?"}
+    M3 -- "No" --> M4["Rollback + error 400"]
+    M3 -- "Si" --> M5["Actualizar saldos"]
+    M5 --> M6["Insertar transferencia y movimientos"]
+    M6 --> M7["Registrar auditoria"]
+    M7 --> M8["Intentar notificacion Telegram"]
+    M8 --> M9["Respuesta exitosa"]
+
+    K --> N["Transferencia interbancaria"]
+    N --> N1["POST /api/interbancaria/transferir"]
+    N1 --> Z
+    Z --> N2["Validar cuenta local y saldo"]
+    N2 --> N3["Buscar banco externo por SWIFT"]
+    N3 --> N4["Generar TransactionID BIGT2026-YYYYMMDD-HHMMSS-XXXX"]
+    N4 --> N5["Enviar API REST a banco externo"]
+    N5 --> N6{"Banco externo confirma?"}
+    N6 -- "No" --> N7["Estado RECHAZADA o ERROR"]
+    N6 -- "Si" --> N8["Descontar saldo local"]
+    N8 --> N9["Registrar movimiento e interbancaria"]
+    N9 --> N10["Auditoria + Telegram + respuesta"]
+
+    K --> O["Historial de movimientos"]
+    O --> O1["GET /api/transferencias/cuenta/:id/historial"]
+    O1 --> Z
+    Z --> O2["Consultar PostgreSQL"]
+    O2 --> O3["Mostrar historial"]
+
+    K --> P["Administracion ERP"]
+    P --> P1["GET /api/admin/*"]
+    P1 --> Z
+    Z --> P2["Middleware authorize ADMIN, CAJERO o GERENTE"]
+    P2 --> P3{"Rol permitido?"}
+    P3 -- "No" --> P4["403 + auditoria de acceso denegado"]
+    P3 -- "Si" --> P5["Resumen, cuentas, bancos externos y auditoria"]
