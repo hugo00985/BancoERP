@@ -11,7 +11,7 @@ const {
     getInterbankAdapter,
 } = require('../integrations/interbank/adapters');
 
-const LOCAL_BANK_NAME = process.env.BANK_NAME || 'Banco Industrial';
+const LOCAL_BANK_NAME = process.env.LOCAL_BANK_NAME || process.env.BANK_NAME || 'Banco Industrial';
 const LOCAL_BANK_SWIFT = normalizeSwift(process.env.LOCAL_BANK_SWIFT || 'BIGT2026');
 const DEFAULT_TIMEOUT_MS = Number(process.env.INTERBANK_REQUEST_TIMEOUT_MS || 10000);
 

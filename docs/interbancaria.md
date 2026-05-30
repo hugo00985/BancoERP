@@ -21,7 +21,7 @@ psql "%DATABASE_URL%" -f C:/BancoGT/BancoGT/database/schema_interbancario.sql
 Variables recomendadas:
 
 ```env
-BANK_NAME=Banco Industrial
+LOCAL_BANK_NAME=Banco Industrial
 LOCAL_BANK_SWIFT=BIGT2026
 INTERBANK_REQUEST_TIMEOUT_MS=10000
 INTERBANK_API_KEY=clave-compartida-para-salidas

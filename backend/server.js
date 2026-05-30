@@ -8,6 +8,7 @@ const path = require('path');
 const { connectMongo } = require('./config/mongodb');
 const { setupSwagger } = require('./config/swagger');
 const { initBot } = require('./services/telegramService');
+const { setupSoapWebService } = require('./services/soapWebService');
 const { auditarErrorCritico } = require('./middleware/auditoria');
 const { registrarEventoAuditoria } = require('./services/auditoriaService');
 
@@ -74,6 +75,7 @@ app.use('/api/auth/login', loginLimiter);
 app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || '1mb' }));
 app.use(morgan('dev'));
 setupSwagger(app);
+setupSoapWebService(app);
 app.use(express.static(path.join(__dirname, '../frontend')));
 
 // Conectar MongoDB e inicializar Telegram

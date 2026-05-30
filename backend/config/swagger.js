@@ -2,7 +2,7 @@ const swaggerJsdoc = require('swagger-jsdoc');
 const swaggerUi = require('swagger-ui-express');
 
 const LOCAL_BANK_SWIFT = process.env.LOCAL_BANK_SWIFT || 'BIGT2026';
-const LOCAL_BANK_NAME = process.env.BANK_NAME || 'Banco Industrial';
+const LOCAL_BANK_NAME = process.env.LOCAL_BANK_NAME || process.env.BANK_NAME || 'Banco Industrial';
 
 const swaggerSpec = swaggerJsdoc({
     definition: {

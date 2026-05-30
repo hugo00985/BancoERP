@@ -25,6 +25,7 @@
     "node-telegram-bot-api": "^0.66.0",
     "pdfkit": "^0.18.0",
     "pg": "^8.13.1",
+    "soap": "^1.9.3",
     "swagger-jsdoc": "^6.3.0",
     "swagger-ui-express": "^5.0.1"
   },
